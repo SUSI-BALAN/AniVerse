@@ -16,3 +16,5 @@ server/data/*.db*
 **/*.tsbuildinfo
 **/.playwright
 server/certs
+**/coverage
+**/logs
