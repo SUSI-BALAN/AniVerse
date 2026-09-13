@@ -5,7 +5,7 @@ const root=process.cwd();
 const env={...loadEnv('production',root,''),...loadEnv('production',resolve(root,'client'),''),...process.env};
 function origin(value){const url=new URL(value);const localhost=url.hostname==='localhost'||url.hostname==='127.0.0.1';if(url.username||url.password||url.pathname!=='/'||url.search||url.hash||(!localhost&&url.protocol!=='https:'))throw new Error('Static hosting requires exact origins (HTTPS outside localhost).');return url.origin;}
 const connections=["'self'"];
-for(const key of ['VITE_API_BASE_URL','VITE_SUPABASE_URL'])if(env[key])connections.push(origin(env[key]));
+for(const key of ['VITE_API_BASE_URL','VITE_SUPABASE_URL'])if(env[key] && !/^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(env[key]))connections.push(origin(env[key]));
 const frames=[];
 for(const key of ['CINEXTREAM','YENIME','ZOKOANIME']){
  if(env[`${key}_ENABLED`]==='true'){
