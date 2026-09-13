@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-09-13T08:19:33.076Z",
+  "gates": {
+    "Remote cross-user read": "PASS",
+    "Remote nonexistent read": "PASS",
+    "Remote cross-user delete": "PASS",
+    "Remote nonexistent delete": "PASS",
+    "User A row preservation": "PASS",
+    "Remote valid owner delete": "PASS",
+    "Remote duplicate summary": "PASS",
+    "Closure cleanup": "PASS"
+  },
+  "counts": {
+    "initial": 0,
+    "duplicate": 6,
+    "mixed": 6
+  },
+  "targetedTests": {
+    "passed": 13,
+    "failed": 0,
+    "newFocusedTests": 8
+  },
+  "serverTests": {
+    "passed": 84,
+    "skipped": 11,
+    "failed": 0
+  },
+  "typecheck": "PASS",
+  "build": "PASS",
+  "secretLogScan": "PASS",
+  "readyForHostedDeploymentVerification": true
+}

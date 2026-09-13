@@ -1,0 +1,5 @@
+import { AnimeCardSkeleton } from "./AnimeCardSkeleton";
+
+export function AnimeDetailsSkeleton() {
+  return <div aria-label="Loading anime details" className="animate-pulse"><div className="min-h-[32rem] bg-surface"><div className="mx-auto flex min-h-[32rem] max-w-page items-end px-4 pb-10 sm:px-6 lg:px-8 xl:px-10"><div className="grid w-full gap-7 sm:grid-cols-[180px_1fr] lg:grid-cols-[220px_1fr]"><div className="aspect-[2/3] w-40 rounded-md bg-white/10 sm:w-full" /><div className="self-end"><div className="h-3 w-24 rounded bg-white/10" /><div className="mt-4 h-10 w-4/5 rounded bg-white/10" /><div className="mt-5 h-4 w-1/2 rounded bg-white/5" /><div className="mt-7 h-11 w-64 rounded bg-white/10" /></div></div></div></div><div className="page-shell grid gap-12 lg:grid-cols-[2fr_1fr]"><div><div className="h-7 w-32 rounded bg-white/10" /><div className="mt-5 h-4 w-full rounded bg-white/5" /><div className="mt-3 h-4 w-5/6 rounded bg-white/5" /></div><div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }, (_, index) => <AnimeCardSkeleton key={index} />)}</div></div></div>;
+}

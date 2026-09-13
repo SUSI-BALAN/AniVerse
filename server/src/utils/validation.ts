@@ -1,0 +1,4 @@
+import {z} from "zod";
+export const pageLimit=z.coerce.number().int().min(1).max(250);
+export const settingValues={theme:["dark"],title_preference:["english","romaji","native"],reduced_motion:["true","false"],show_adult_content:["true","false"],default_list_status:["PLANNING","WATCHING","COMPLETED","ON_HOLD","DROPPED"],default_audio_language:["sub","dub"],autoplay:["true","false"],auto_next:["true","false"],default_provider:["cinextream","yenime","zokoanime"]} as const;
+export function validateSetting(key:string,value:string){const allowed=settingValues[key as keyof typeof settingValues] as readonly string[]|undefined;if(!allowed?.includes(value))throw new z.ZodError([{code:"custom",path:[key],message:"Invalid setting value."}]);return value;}

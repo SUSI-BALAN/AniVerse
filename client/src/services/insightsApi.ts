@@ -1,0 +1,5 @@
+import type { Anime } from "../types/anime";
+import { apiFetch } from "./apiClient";
+async function get<T>(path: string): Promise<T> { const response = await apiFetch(path); const body = await response.json() as { data: T; error?: { message?: string } }; if (!response.ok) throw new Error(body.error?.message ?? "Unable to load local insights."); return body.data; }
+export type Stats = { favorites: number; watchlist: number; watching: number; completedAnime: number; completedEpisodes: number; inProgressEpisodes: number; estimatedWatchSeconds: number; topGenres: Array<{ genre: string; score: number }>; recentActivity: Array<{ anilistId: number; episodeNumber: number; title: string; watchedAt: string; progressPercentage: number; completed: boolean }> };
+export const insightsApi = { stats: () => get<Stats>("/api/stats"), recommendations: () => get<Array<{ anime: Anime; reason: string }>>("/api/recommendations"), becauseYouWatched: () => get<{ sourceAnime: { id: number; title: string; coverImage: string | null }; recommendations: Array<{ anime: Anime; reason: string }> } | null>("/api/recommendations/because-you-watched") };

@@ -1,0 +1,5 @@
+import {createHmac,timingSafeEqual} from "node:crypto";
+export const users=["00000000-0000-4000-8000-000000000031","00000000-0000-4000-8000-000000000032"];
+const secret="isolated-e2e-only-not-a-production-secret";
+export function token(id:string,email:string){const body=Buffer.from(JSON.stringify({sub:id,email,exp:Math.floor(Date.now()/1000)+3600,aud:"authenticated",role:"authenticated"})).toString("base64url");const data=Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")+"."+body;return data+"."+createHmac("sha256",secret).update(data).digest("base64url");}
+export function verifyToken(value:string){try{const [head,body,sig]=value.split(".");const expected=createHmac("sha256",secret).update(head+"."+body).digest();const actual=Buffer.from(sig,"base64url");if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return null;const payload=JSON.parse(Buffer.from(body,"base64url").toString());return users.includes(payload.sub)&&payload.exp>Date.now()/1000?{id:payload.sub,email:payload.email}:null;}catch{return null;}}

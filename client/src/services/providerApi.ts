@@ -1,0 +1,5 @@
+import type { ProviderInfo, ProviderResolveRequest, ProviderResolveResponse } from "../types/provider";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+async function request<T>(path: string, init?: RequestInit): Promise<T> { let response: Response; try { response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } }); } catch { throw new Error("Unable to reach playback server configuration."); } const text = await response.text(); let body: { data?: T; error?: { message?: string } } = {}; try { body = text ? JSON.parse(text) : {}; } catch { throw new Error("Playback server returned an unexpected response."); } if (!response.ok) throw new Error(body.error?.message ?? "Unable to load playback servers."); return body.data as T; }
+export function getProviders() { return request<ProviderInfo[]>("/api/providers"); }
+export function resolveProvider(input: ProviderResolveRequest) { return request<ProviderResolveResponse>("/api/providers/resolve", { method: "POST", body: JSON.stringify(input) }); }

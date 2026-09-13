@@ -1,0 +1,2 @@
+import { rateLimit } from "express-rate-limit";
+export function createApiRateLimit(limit=3000){return rateLimit({windowMs:15*60_000,limit,standardHeaders:"draft-8",legacyHeaders:false,handler:(_request,response)=>{response.locals.errorCode="RATE_LIMITED";response.status(429).json({success:false,error:{code:"RATE_LIMITED",message:"Too many requests. Please try again shortly.",requestId:response.getHeader("X-Request-Id")}});}});}

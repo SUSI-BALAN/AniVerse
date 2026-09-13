@@ -1,0 +1,3 @@
+import type { PlaybackLanguage, ProviderId } from "./provider";
+export type EpisodeProgress = { anilistId: number; malId: number | null; episodeNumber: number; title: string; coverImage: string | null; currentTime: number; duration: number; percentage: number; completed: boolean; providerId: ProviderId | null; language: PlaybackLanguage | null; firstWatchedAt: string | null; lastWatchedAt: string; completedAt: string | null };
+export type WatchHistoryEntry = { id: number; anilistId: number; episodeNumber: number; title: string; coverImage: string | null; progressPercentage: number; completed: boolean; providerId: ProviderId | null; language: PlaybackLanguage | null; watchedAt: string };
