@@ -1,4 +1,3 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Info, Play, Pause, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Anime } from "../types/anime";
@@ -14,11 +13,13 @@ export function AnimeHero({ anime, loading, spotlightLabel = 'Trending spotlight
   const [paused, setPaused] = useState(false);
   const [focusPaused, setFocusPaused] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
-  const systemReducedMotion = useReducedMotion();
+  const [systemReducedMotion, setSystemReducedMotion] = useState(false);
   const library = useOptionalLibrary();
   const reduceMotion = systemReducedMotion || library?.settings.reduced_motion === 'true';
   const items = anime.filter((item) => item.bannerImage).slice(0, 5);
   const current = items[index] ?? anime[0];
+
+  useEffect(() => { const media = window.matchMedia?.('(prefers-reduced-motion: reduce)'); if (!media) return; const update = () => setSystemReducedMotion(media.matches); update(); media.addEventListener?.('change', update); return () => media.removeEventListener?.('change', update); }, []);
 
   useEffect(() => {
     if (index >= items.length) setIndex(0);
@@ -51,15 +52,13 @@ export function AnimeHero({ anime, loading, spotlightLabel = 'Trending spotlight
 
   return (
     <section className="relative min-h-[31rem] overflow-hidden border-b border-outline bg-surface sm:min-h-[38rem] lg:min-h-[42rem]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocusCapture={() => setFocusPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusPaused(false); }} aria-roledescription="carousel" aria-label="Featured anime">
-      <AnimatePresence mode="wait">
-        <motion.div key={current.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.55 }} className="absolute inset-0">
+      <div key={current.id} className="hero-media absolute inset-0">
           {current.bannerImage ? <AnimeImage src={current.bannerImage} alt="" eager className="h-full w-full object-cover object-center" /> : <div className="h-full w-full bg-surface-soft" />}
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/75 to-background/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/25" />
-        </motion.div>
-      </AnimatePresence>
+      </div>
       <div className="relative mx-auto flex min-h-[31rem] max-w-page items-end px-4 pb-12 pt-24 sm:min-h-[38rem] sm:px-6 sm:pb-16 lg:min-h-[42rem] lg:px-8 xl:px-10">
-        <motion.div key={`copy-${current.id}`} initial={{ opacity: 0, y: reduceMotion ? 0 : 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.4, delay: reduceMotion ? 0 : 0.12 }} className="max-w-2xl">
+        <div key={`copy-${current.id}`} className="hero-copy max-w-2xl">
           <p className="text-xs font-black uppercase text-accent-secondary">{spotlightLabel}</p>
           <h1 className="mt-3 text-4xl font-black leading-tight text-foreground sm:text-6xl lg:text-7xl">{title}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-zinc-200">
@@ -71,7 +70,7 @@ export function AnimeHero({ anime, loading, spotlightLabel = 'Trending spotlight
           <div className="mt-4 flex flex-wrap gap-2">{current.genres.slice(0, 3).map((genre) => <GenreBadge key={genre}>{genre}</GenreBadge>)}</div>
           <p className="mt-5 line-clamp-3 max-w-xl text-sm leading-6 text-zinc-200 sm:text-base sm:leading-7">{current.description ?? "Explore one of AniList's most talked-about titles."}</p>
           <div className="mt-7 flex flex-wrap gap-3"><Button disabled title="Playback is not available yet"><Play size={17} fill="currentColor" /> Watch now</Button><Button to={`/anime/${current.id}`} variant="secondary"><Info size={17} /> More info</Button></div>
-        </motion.div>
+        </div>
       </div>
       {items.length > 1 && (
         <div className="absolute right-4 top-4 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2 sm:bottom-7 sm:right-7 sm:top-auto">

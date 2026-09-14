@@ -6,8 +6,8 @@ import { AnimeCard } from "./AnimeCard";
 import { AnimeCardSkeleton } from "./AnimeCardSkeleton";
 import { ErrorState } from "./PageState";
 import { EmptyState } from "./EmptyState";
-import { useReducedMotion } from 'framer-motion';
 import { useOptionalLibrary } from '../context/LibraryContext';
+import { useEffect, useState } from 'react';
 
 type AnimeSectionProps = {
   title: string;
@@ -22,7 +22,8 @@ type AnimeSectionProps = {
 
 export function AnimeSection({ title, subtitle, anime, loading, viewAllLink, error, onRetry, reasons }: AnimeSectionProps) {
   const rail = useRef<HTMLDivElement>(null);
-  const systemReduced = useReducedMotion(), library = useOptionalLibrary();
+  const library = useOptionalLibrary(), [systemReduced, setSystemReduced] = useState(false);
+  useEffect(() => { const media = window.matchMedia?.('(prefers-reduced-motion: reduce)'); if (!media) return; const update = () => setSystemReduced(media.matches); update(); media.addEventListener?.('change', update); return () => media.removeEventListener?.('change', update); }, []);
   const reduced = systemReduced || library?.settings.reduced_motion === 'true';
   const scroll = (direction: number) => rail.current?.scrollBy({ left: direction * rail.current.clientWidth * 0.75, behavior: reduced ? "auto" : "smooth" });
 

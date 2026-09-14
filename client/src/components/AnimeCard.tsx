@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Anime } from "../types/anime";
@@ -12,10 +11,9 @@ export function AnimeCard({ anime, rank, label }: { anime: Anime; rank?: number;
   const preference = library?.settings.title_preference as "english" | "romaji" | "native" | undefined;
   const title = getAnimeTitle(anime, preference || "english");
   const image = anime.coverImage.extraLarge || anime.coverImage.large;
-  const reduceMotion = useReducedMotion();
 
   return (
-    <motion.article initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} whileHover={reduceMotion ? undefined : { scale: 1.02 }} transition={{ duration: reduceMotion ? 0 : 0.2 }} className="min-w-0">
+    <article className="min-w-0">
       <Link to={`/anime/${anime.id}`} className="group block" aria-label={`View details for ${title}`}>
         <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-surface-soft shadow-card ring-1 ring-outline transition duration-200 group-hover:ring-white/25 group-focus-visible:ring-accent-secondary">
           <AnimeImage src={image} alt={`${title} cover`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.035] group-focus-visible:scale-[1.035]" />
@@ -38,6 +36,6 @@ export function AnimeCard({ anime, rank, label }: { anime: Anime; rank?: number;
           {anime.episodes && <p className="mt-1 text-xs text-zinc-500">{anime.episodes} episodes</p>}
         </div>
       </Link>
-    </motion.article>
+    </article>
   );
 }
