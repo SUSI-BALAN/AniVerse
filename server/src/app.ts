@@ -23,6 +23,8 @@ import { createCloudDataRouter } from "./routes/cloudData.routes.js";
 import { createUserInsightsRouter } from "./routes/userInsights.routes.js";
 import { getPostgresPool } from "./database/postgres.js";
 import { createApiRateLimit } from "./middleware/rateLimits.js";
+import {createProfileRouter} from './routes/profile.routes.js';
+import {PostgresUserProfileRepository, SQLiteUserProfileRepository} from './repositories/profile.repository.js';
 
 type AppOptions = {
   animeService?: AnimeListServiceContract;
@@ -69,6 +71,10 @@ export function createApp(options: AppOptions = {}) {
   const repositories = options.repositories ?? createUserRepositories(options.database);
   app.use("/api", auth.requireAuth);
   app.use("/api",(_req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
+  const profile = repositories.profile ?? (env.DATABASE_MODE === 'postgres'
+    ? new PostgresUserProfileRepository(options.postgresPool ?? getPostgresPool())
+    : new SQLiteUserProfileRepository(options.database ?? getDatabase()));
+  app.use('/api', createProfileRouter(profile));
   app.use("/api", createUserLibraryRouter(repositories.library));
   app.use("/api", createUserPlaybackRouter(repositories.playback));
   if (env.DATABASE_MODE === "postgres") {

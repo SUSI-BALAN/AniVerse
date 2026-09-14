@@ -1,3 +1,11 @@
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id TEXT PRIMARY KEY NOT NULL CHECK(user_id = 'local'),
+  display_name TEXT NOT NULL CHECK(length(display_name) BETWEEN 1 AND 40),
+  avatar_id TEXT NOT NULL CHECK(avatar_id IN ('avatar-01','avatar-02','avatar-03','avatar-04','avatar-05','avatar-06')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

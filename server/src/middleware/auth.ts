@@ -14,7 +14,7 @@ function supabaseClient() {
 
 export const verifySupabaseToken: TokenVerifier = async (token) => {
   const { data, error } = await supabaseClient().auth.getUser(token);
-  return error || !data.user ? null : { id: data.user.id, email: data.user.email };
+  return error || !data.user ? null : { id: data.user.id, email: data.user.email, joinedAt: data.user.created_at ?? null };
 };
 
 const bearer = (request: AuthenticatedRequest) => {

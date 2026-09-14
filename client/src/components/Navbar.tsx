@@ -30,6 +30,7 @@ export function Navbar() {
         </nav>
         <div className="ml-auto hidden items-center gap-1 md:flex">
           <NavIcon to="/search" label="Search"><Search size={19} /></NavIcon>
+          {(auth.mode === 'local' || auth.user) && <NavIcon to="/profile" label="Profile"><UserRound size={19} /></NavIcon>}
           {(auth.mode === "local" || auth.user) && <NavIcon to="/settings" label="Settings"><Settings size={19} /></NavIcon>}
           {auth.mode === "supabase" && !auth.user && <NavIcon to="/login" label="Sign in"><UserRound size={19} /></NavIcon>}
           {auth.mode === "supabase" && auth.user && <button type="button" onClick={() => void auth.signOut()} aria-label="Sign out" title="Sign out" className="flex h-10 w-10 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-soft hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"><LogOut size={18} /></button>}

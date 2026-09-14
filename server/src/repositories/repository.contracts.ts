@@ -1,6 +1,12 @@
 import type { AnimeSnapshotInput, Favorite, RecentlyViewed, SearchHistoryItem, WatchlistItem, WatchlistStatus } from "../types/library.types.js";
 import type { EpisodeProgress, WatchHistoryEntry } from "../types/progress.types.js";
 import type { ProgressInput } from "./playback.repository.js";
+import type {Profile, ProfilePatch} from '../types/profile.types.js';
+
+export interface UserProfileRepository {
+  getProfile(userId: string): Promise<Profile>;
+  updateProfile(userId: string, patch: ProfilePatch): Promise<Profile>;
+}
 
 export interface UserLibraryRepository {
   favorites(userId: string): Promise<Favorite[]>;
