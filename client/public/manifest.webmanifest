@@ -1,0 +1,14 @@
+{
+  "name": "AniVerse — Anime discovery and watchlist",
+  "short_name": "AniVerse",
+  "description": "Discover anime, manage your library, and continue watching.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08080c",
+  "theme_color": "#08080c",
+  "icons": [
+    { "src": "/icons/aniverse-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/aniverse-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -15,6 +15,6 @@ for(const key of ['CINEXTREAM','YENIME','ZOKOANIME']){
  }
 }
 const csp=["default-src 'self'","script-src 'self'","style-src 'self' 'unsafe-inline'","img-src 'self' data: https://s4.anilist.co https://s.anilist.co",`connect-src ${connections.join(' ')}`,`frame-src ${frames.length?frames.join(' '):"'none'"}`,"object-src 'none'","base-uri 'self'","form-action 'self'","frame-ancestors 'none'"].join('; ');
-await writeFile(resolve(root,'client/dist/_headers'),`/*\n  Content-Security-Policy: ${csp}\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  X-Frame-Options: DENY\n  Strict-Transport-Security: max-age=31536000\n`);
+await writeFile(resolve(root,'client/dist/_headers'),`/*\n  Content-Security-Policy: ${csp}\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  X-Frame-Options: DENY\n  Strict-Transport-Security: max-age=31536000\n\n/sw.js\n  Cache-Control: no-cache, must-revalidate\n\n/manifest.webmanifest\n  Cache-Control: no-cache, must-revalidate\n`);
 await writeFile(resolve(root,'client/dist/_redirects'),'/* /index.html 200\n');
 console.log('Static HTML headers and SPA fallback generated.');

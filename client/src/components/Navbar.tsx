@@ -16,7 +16,7 @@ const navItems = [
 export function Navbar() {
   const auth = useAuth();
   return (
-    <header className="sticky top-0 z-40 border-b border-outline bg-[rgba(8,8,12,0.82)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-outline bg-[rgba(8,8,12,0.82)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-page items-center px-4 sm:px-6 lg:px-8 xl:px-10">
         <NavLink to="/" className="mr-8 flex items-baseline font-black text-foreground" aria-label="AniVerse home">
           <span className="text-xl">Ani</span><span className="text-xl text-accent">Verse</span><span className="ml-1 h-1.5 w-1.5 rounded-full bg-accent-secondary" />
