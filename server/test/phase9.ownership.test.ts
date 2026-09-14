@@ -41,4 +41,17 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("real API ownership for every pr
   expect((await request(app).delete("/api/data/reset/all").set("Authorization",`Bearer ${b}`)).status).toBe(200);
   expect((await request(app).get("/api/favorites").set("Authorization",`Bearer ${a}`)).body.data).toHaveLength(1);
  });
+ it('isolates recent searches through clear reset export and import',async()=>{
+  const get=(owner:string,path:string)=>request(app).get(path).auth(owner,{type:'bearer'});
+  for(const [owner,query] of [[a,'Private search A'],[b,'Private search B']]){
+    expect((await request(app).delete('/api/search-history').auth(owner,{type:'bearer'})).status).toBe(200);
+    expect((await request(app).post('/api/search-history').auth(owner,{type:'bearer'}).send({query})).status).toBe(201);
+    expect((await get(owner,'/api/search-history')).body.data.map((x:{query:string})=>x.query)).toEqual([query]);
+  }
+  const backup=(await get(a,'/api/data/export')).body;expect(backup.searchHistory.map((x:{query:string})=>x.query)).toEqual(['Private search A']);
+  expect((await request(app).delete('/api/data/reset/search-history').auth(a,{type:'bearer'})).status).toBe(200);
+  expect((await get(a,'/api/search-history')).body.data).toEqual([]);expect((await get(b,'/api/search-history')).body.data.map((x:{query:string})=>x.query)).toEqual(['Private search B']);
+  expect((await request(app).post('/api/data/import').auth(a,{type:'bearer'}).send(backup)).status).toBe(200);
+  expect((await get(a,'/api/search-history')).body.data.map((x:{query:string})=>x.query)).toEqual(['Private search A']);
+ });
 });

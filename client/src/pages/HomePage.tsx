@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { AnimeHero } from "../components/AnimeHero";
 import { AnimeSection } from "../components/AnimeSection";
 import { ANIME_GENRES, getCurrentAnimeSeason } from "../constants/anime";
 import { useAnimePage } from "../hooks/useAnimePage";
-import { getPopularAnime, getSeasonalAnime, getTrendingAnime } from "../services/animeApi";
+import { getPopularAnime, getSeasonalAnime, getTrendingAnime, getTopRatedAnime } from "../services/animeApi";
 import { useEffect, useState } from "react";
 import { progressApi } from "../services/progressApi";
 import type { EpisodeProgress } from "../types/progress";
@@ -29,10 +29,11 @@ export function HomePage() {
   const trendingFetcher = useCallback((signal: AbortSignal) => getTrendingAnime(1, 20, signal), []);
   const popularFetcher = useCallback((signal: AbortSignal) => getPopularAnime(1, 20, signal), []);
   const seasonalFetcher = useCallback((signal: AbortSignal) => getSeasonalAnime(current.season, current.year, 1, 20, signal), [current.season, current.year]);
+  const topRatedFetcher = useCallback((signal: AbortSignal) => getTopRatedAnime(1, 20, signal), []);
   const trending = useAnimePage(trendingFetcher, []);
   const popular = useAnimePage(popularFetcher, []);
   const seasonal = useAnimePage(seasonalFetcher, [current.season, current.year]);
-  const topRated = useMemo(() => [...popular.anime].filter((item) => item.averageScore).sort((a, b) => (b.averageScore ?? 0) - (a.averageScore ?? 0)).slice(0, 12), [popular.anime]);
+  const topRatedPage = useAnimePage(topRatedFetcher, []);
 
   return (
     <div>
@@ -45,7 +46,7 @@ export function HomePage() {
         {completed.length > 0 && <section className="border-b border-outline py-10"><h2 className="text-2xl font-black text-foreground">Recently Completed</h2><div className="mt-6 flex gap-4 overflow-x-auto pb-2 scrollbar-none">{completed.slice(0, 10).map((item) => <ContinueWatchingCard key={`${item.anilistId}-${item.episodeNumber}`} item={item} />)}</div></section>}
         <AnimeSection title="Trending Now" subtitle="The titles everyone is talking about" anime={trending.anime} loading={trending.loading} error={trending.error} onRetry={trending.retry} viewAllLink="/trending" />
         <AnimeSection title="Popular This Season" subtitle={`${titleCase(current.season)} ${current.year}`} anime={seasonal.anime} loading={seasonal.loading} error={seasonal.error} onRetry={seasonal.retry} viewAllLink="/seasonal" />
-        <AnimeSection title="Top Rated" subtitle="Standout favorites from the catalog" anime={topRated} loading={popular.loading} error={popular.error} onRetry={popular.retry} viewAllLink="/browse" />
+        <AnimeSection title="Top Rated" subtitle="Standout favorites from the catalog" anime={topRatedPage.anime.slice(0, 12)} loading={topRatedPage.loading} error={topRatedPage.error} onRetry={topRatedPage.retry} viewAllLink="/browse?sort=SCORE" />
         <AnimeSection title="More To Explore" subtitle="Popular anime for your next watch" anime={popular.anime.slice(6)} loading={popular.loading} error={popular.error} onRetry={popular.retry} viewAllLink="/browse" />
         <section className="border-t border-outline py-10" aria-labelledby="genres-heading">
           <div className="max-w-2xl"><p className="text-xs font-black uppercase text-accent-secondary">Find your mood</p><h2 id="genres-heading" className="mt-2 text-2xl font-black text-foreground">Browse by genre</h2></div>

@@ -92,12 +92,12 @@ test("mobile navigation and browse filter drawer are usable", async ({ page }) =
   await expect(page.getByRole("dialog", { name: "Browse filters" })).toBeVisible();
   await page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Genre").selectOption("Action");
   await page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Season").selectOption("FALL");
-  await page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Year").selectOption("2026");
+  await page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Year", {exact:true}).selectOption("2026");
   await page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Minimum score").selectOption("80");
   await page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Sort").selectOption("TITLE_ASC");
   await page.getByRole("button", { name: "Show results" }).click();
   await expect(page.getByRole("button", { name: /Action/ })).toBeVisible();
-  await expect(page).toHaveURL(/genre=Action/); await expect(page).toHaveURL(/season=FALL/); await expect(page).toHaveURL(/minScore=80/); await expect(page).toHaveURL(/sort=TITLE_ASC/);
+  await expect(page).toHaveURL(/genres=Action/); await expect(page).toHaveURL(/season=FALL/); await expect(page).toHaveURL(/minScore=80/); await expect(page).toHaveURL(/sort=TITLE_ASC/);
   await page.reload(); await page.getByRole("button", { name: /^Filters/ }).click();
   await expect(page.getByRole("dialog", { name: "Browse filters" }).getByLabel("Season")).toHaveValue("FALL");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);

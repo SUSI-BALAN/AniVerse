@@ -27,7 +27,7 @@ type AniListPage = {
 
 export type AnimeListServiceContract = Pick<
   AniListService,
-  "search" | "trending" | "popular" | "seasonal" | "browse" | "details"
+  "search" | "trending" | "popular" | "topRated" | "seasonal" | "browse" | "details"
 >;
 
 const SUMMARY_FIELDS = `
@@ -61,8 +61,13 @@ const PAGE_QUERY = `
     $seasonYear: Int,
     $minScore: Int,
     $genre: String,
+    $genre_in: [String],
     $format: MediaFormat,
-    $status: MediaStatus
+    $format_in: [MediaFormat],
+    $status: MediaStatus,
+    $status_in: [MediaStatus],
+    $yearFrom: FuzzyDateInt,
+    $yearTo: FuzzyDateInt
   ) {
     Page(page: $page, perPage: $perPage) {
       pageInfo { currentPage perPage hasNextPage total }
@@ -75,8 +80,13 @@ const PAGE_QUERY = `
         seasonYear: $seasonYear,
         averageScore_greater: $minScore,
         genre: $genre,
+        genre_in: $genre_in,
         format: $format,
-        status: $status
+        format_in: $format_in,
+        status: $status,
+        status_in: $status_in,
+        startDate_greater: $yearFrom,
+        startDate_lesser: $yearTo
       ) { ${SUMMARY_FIELDS} }
     }
   }
@@ -204,7 +214,7 @@ export class AniListService {
   ) {}
 
   search(query: string, page: number, perPage: number): Promise<AnimePage> {
-    return this.fetchPage({ page, perPage, search: query, sort: ["SEARCH_MATCH", "POPULARITY_DESC"] });
+    return this.coalescedPage({ page, perPage, search: query, sort: ["SEARCH_MATCH", "POPULARITY_DESC"] });
   }
 
   trending(page: number, perPage: number): Promise<AnimePage> {
@@ -223,6 +233,12 @@ export class AniListService {
     );
   }
 
+  topRated(page: number, perPage: number): Promise<AnimePage> {
+    return this.cachedPage(`top-rated:${page}:${perPage}`, env.ANILIST_POPULAR_CACHE_TTL_SECONDS, {
+      page, perPage, sort: ["SCORE_DESC", "POPULARITY_DESC"]
+    });
+  }
+
   seasonal(season: AnimeSeason, year: number, page: number, perPage: number): Promise<AnimePage> {
     return this.cachedPage(
       `seasonal:${season}:${year}:${page}:${perPage}`,
@@ -232,13 +248,18 @@ export class AniListService {
   }
 
   browse(filters: BrowseFilters, page: number, perPage: number): Promise<AnimePage> {
-    return this.fetchPage({
+    return this.coalescedPage({
       page,
       perPage,
       genre: filters.genre,
+      genre_in: filters.genres,
       format: filters.format,
+      format_in: filters.formats,
       status: filters.status,
+      status_in: filters.statuses,
       seasonYear: filters.year,
+      yearFrom: filters.yearFrom === undefined ? undefined : filters.yearFrom * 10000 - 1,
+      yearTo: filters.yearTo === undefined ? undefined : (filters.yearTo + 1) * 10000,
       season: filters.season,
       minScore: filters.minScore,
       sort: sortValues[filters.sort ?? "POPULARITY"]
@@ -298,7 +319,7 @@ export class AniListService {
     const cached = this.cache.get<AnimePage>(cacheKey);
     if (cached) return cached;
 
-    const page = await this.fetchPage(variables);
+    const page = await this.coalescedPage(variables);
     this.cache.set(cacheKey, page, ttlSeconds);
     return page;
   }
@@ -309,6 +330,17 @@ export class AniListService {
       throw new AppError(502, "ANILIST_MALFORMED_RESPONSE", "AniList returned an unexpected response.");
     }
     return normalizePage(result.Page, variables.page as number, variables.perPage as number);
+  }
+
+  private readonly inFlight = new Map<string, Promise<AnimePage>>();
+
+  private coalescedPage(variables: JsonObject): Promise<AnimePage> {
+    const key = JSON.stringify(Object.fromEntries(Object.entries(variables).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, Array.isArray(v) && k !== 'sort' ? [...v].sort() : v])));
+    const existing = this.inFlight.get(key);
+    if (existing) return existing;
+    const promise = this.fetchPage(variables).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, promise);
+    return promise;
   }
 
   private async request<T>(query: string, variables: JsonObject): Promise<T> {

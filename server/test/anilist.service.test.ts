@@ -33,4 +33,38 @@ describe("AniListService", () => {
     const disabled = vi.fn().mockResolvedValue(new Response(JSON.stringify({ errors: [{ message: "disabled" }] }), { status: 403 }));
     await expect(new AniListService(cacheMock(), disabled).popular(1, 20)).rejects.toMatchObject({ code: "ANILIST_UNAVAILABLE", status: 503 });
   });
+
+  it("coalesces identical concurrent catalog requests", async () => {
+    const cache = cacheMock();
+    const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ data: { Page: { pageInfo: { currentPage: 1, perPage: 20, hasNextPage: false, total: 0 }, media: [] } } }), { status: 200 }));
+    const service = new AniListService(cache, fetcher);
+    await Promise.all([service.search("naruto", 1, 20), service.search("naruto", 1, 20)]);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases a failed coalesced request before retry', async () => {
+    const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce(new Response(JSON.stringify({ data: { Page: { media: [] } } })));
+    const service = new AniListService(cacheMock(), fetcher);
+    const results = await Promise.allSettled([service.search('retry',1,20), service.search('retry',1,20)]);
+    expect(results.every(x => x.status === 'rejected')).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await expect(service.search('retry',1,20)).resolves.toMatchObject({data:[]});
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses documented inclusive start-date year bounds', async () => {
+    const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:{Page:{media:[]}}})));
+    await new AniListService(cacheMock(),fetcher).browse({genres:['Action','Comedy'],yearFrom:2020,yearTo:2026,sort:'SCORE'},1,20);
+    const outgoing=JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(outgoing.query).toContain('startDate_greater: $yearFrom');expect(outgoing.query).not.toContain('seasonYear_greater');
+    expect(outgoing.variables).toMatchObject({yearFrom:20199999,yearTo:20270000,genre_in:['Action','Comedy'],sort:['SCORE_DESC']});
+  });
+  it.each([429,500,503])('normalizes upstream %s without retry storms',async status=>{
+    const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({errors:[{}]}),{status}));
+    await expect(new AniListService(cacheMock(),fetcher).search('failure',1,20)).rejects.toMatchObject({code:'ANILIST_UNAVAILABLE',status:503});expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('normalizes upstream timeout',async()=>{
+    const fetcher=vi.fn().mockRejectedValue(Object.assign(new Error('aborted'),{name:'AbortError'}));
+    await expect(new AniListService(cacheMock(),fetcher).search('timeout',1,20)).rejects.toMatchObject({code:'ANILIST_TIMEOUT',status:504});
+  });
 });

@@ -16,7 +16,7 @@ export default async function setup(_config:FullConfig) {
  await pool.query("INSERT INTO auth.users(id) VALUES($1),($2)",users);
  const {createApp}=await import("../../server/src/app.ts");
  const page=async()=>({data:[animeFixture,{...animeFixture,id:2,title:{english:"Recommended Anime",romaji:null,native:null}}],pagination:{page:1,perPage:20,total:2,hasNextPage:false}});
- const api=createApp({tokenVerifier:async token=>verifyToken(token),animeService:{popular:page,trending:page,seasonal:page,browse:page,search:page,details:async()=>({...detailsFixture,recommendations:[{...animeFixture,id:2,title:{english:"Recommended Anime",romaji:null,native:null}}]})} as never}).listen(4176,"127.0.0.1");
+ const api=createApp({tokenVerifier:async token=>verifyToken(token),animeService:{topRated:page,popular:page,trending:page,seasonal:page,browse:page,search:page,details:async()=>({...detailsFixture,recommendations:[{...animeFixture,id:2,title:{english:"Recommended Anime",romaji:null,native:null}}]})} as never}).listen(4176,"127.0.0.1");
  await new Promise<void>((resolve,reject)=>{api.once("listening",resolve);api.once("error",reject);});
  const vite=await createViteServer({root:fileURLToPath(new URL("..",import.meta.url)),server:{host:"127.0.0.1",port:4175,strictPort:true}});
  await vite.listen();

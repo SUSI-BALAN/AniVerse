@@ -1,18 +1,28 @@
 import { LoaderCircle, Search, X } from "lucide-react";
+import type { KeyboardEventHandler } from 'react';
 
 type SearchBarProps = {
   value: string;
   onChange: (value: string) => void;
   autoFocus?: boolean;
   pending?: boolean;
+  suggestionsOpen?: boolean;
+  activeSuggestion?: number;
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 };
 
-export function SearchBar({ value, onChange, autoFocus = false, pending = false }: SearchBarProps) {
+export function SearchBar({ value, onChange, autoFocus = false, pending = false, suggestionsOpen = false, activeSuggestion = -1, onKeyDown }: SearchBarProps) {
   return (
     <div className="relative">
       <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={21} aria-hidden="true" />
       <input
         type="search"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={suggestionsOpen}
+        aria-controls={suggestionsOpen ? 'search-suggestions' : undefined}
+        aria-activedescendant={suggestionsOpen && activeSuggestion >= 0 ? `search-suggestion-${activeSuggestion}` : undefined}
+        onKeyDown={onKeyDown}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoFocus={autoFocus}

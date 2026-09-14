@@ -11,6 +11,7 @@ function serviceMock(): AnimeListServiceContract {
     search: vi.fn().mockResolvedValue(page),
     trending: vi.fn().mockResolvedValue(page),
     popular: vi.fn().mockResolvedValue(page),
+    topRated: vi.fn().mockResolvedValue(page),
     seasonal: vi.fn().mockResolvedValue(page),
     browse: vi.fn().mockResolvedValue(page),
     details: vi.fn().mockResolvedValue({ id: 1 })
@@ -18,6 +19,15 @@ function serviceMock(): AnimeListServiceContract {
 }
 
 describe("anime API", () => {
+  it.each(['genres=invalid','genres=','genres=Action&genres=Comedy','yearFrom=2026&yearTo=2020','yearFrom=1939','yearTo=2101','formats=BOOK','statuses=bad','season=bad','minScore=101','sort=bad','page=-1','perPage=26'])('rejects invalid discovery query %s',async query=>{
+    const service=serviceMock();const response=await request(createApp({animeService:service})).get('/api/anime/browse?'+query);
+    expect(response.status).toBe(400);expect(service.browse).not.toHaveBeenCalled();
+  });
+  it('normalizes bounded arrays and valid year ranges before calling the catalog',async()=>{
+    const service=serviceMock();const response=await request(createApp({animeService:service})).get('/api/anime/browse?genres=Comedy,Action,Action&formats=TV,MOVIE&statuses=FINISHED,HIATUS&yearFrom=2020&yearTo=2026&season=FALL&minScore=80&sort=SCORE&page=2');
+    expect(response.status).toBe(200);expect(service.browse).toHaveBeenCalledWith(expect.objectContaining({genres:['Action','Comedy'],formats:['MOVIE','TV'],statuses:['FINISHED','HIATUS'],yearFrom:2020,yearTo:2026,sort:'SCORE'}),2,20);
+    expect((await request(createApp({animeService:service})).get('/api/anime/top-rated')).status).toBe(200);expect(service.topRated).toHaveBeenCalledWith(1,20);
+  });
   it("trims search text and applies pagination defaults", async () => {
     const service = serviceMock();
     const response = await request(createApp({ animeService: service })).get("/api/anime/search?q=%20naruto%20");

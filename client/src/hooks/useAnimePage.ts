@@ -15,12 +15,17 @@ export function useAnimePage(fetcher: PageFetcher, dependencies: readonly unknow
     setLoading(true);
     setError(null);
 
-    fetcher(controller.signal)
+    Promise.resolve().then(() => {
+      if (controller.signal.aborted) throw new DOMException('Request cancelled', 'AbortError');
+      return fetcher(controller.signal);
+    })
       .then((response) => {
+        if (controller.signal.aborted) return;
         setAnime(response.data);
         setPagination(response.pagination);
       })
       .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "We couldn't load anime information right now.");
       })

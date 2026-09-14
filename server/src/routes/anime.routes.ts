@@ -30,6 +30,7 @@ export function createAnimeRouter(service: AnimeListServiceContract = new AniLis
   router.get("/search", controller.search);
   router.get("/trending", controller.trending);
   router.get("/popular", controller.popular);
+  router.get("/top-rated", controller.topRated);
   router.get("/seasonal", controller.seasonal);
   router.get("/browse", controller.browse);
   router.get("/genres", (_, response) => response.json({ success: true, data: ANIME_GENRES }));

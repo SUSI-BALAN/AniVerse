@@ -40,9 +40,14 @@ export type AnimePageResponse = { success: true; data: Anime[]; pagination: Pagi
 
 export type BrowseFilters = {
   genre?: string;
+  genres?: string[];
   format?: string;
+  formats?: string[];
   status?: string;
+  statuses?: string[];
   year?: number;
+  yearFrom?: number;
+  yearTo?: number;
   season?: AnimeSeason;
   minScore?: number;
   sort?: AnimeSort;
