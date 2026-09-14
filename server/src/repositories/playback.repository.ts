@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 import type { EpisodeProgress, ProviderId, PlaybackLanguage, WatchHistoryEntry } from "../types/progress.types.js";
 
 const progressSelect = `anilist_id AS anilistId, mal_id AS malId, episode_number AS episodeNumber, total_episodes AS totalEpisodes, COALESCE(title, '') AS title, cover_image AS coverImage, genres, "current_time" AS currentTime, duration, percentage, completed, provider_id AS providerId, language, first_watched_at AS firstWatchedAt, COALESCE(last_watched_at, updated_at) AS lastWatchedAt, completed_at AS completedAt`;
-const historySelect = `id, anilist_id AS anilistId, episode_number AS episodeNumber, title, cover_image AS coverImage, progress_percentage AS progressPercentage, completed, provider_id AS providerId, language, watched_at AS watchedAt`;
+const historySelect = `id, anilist_id AS anilistId, episode_number AS episodeNumber, title, cover_image AS coverImage, genres, progress_percentage AS progressPercentage, completed, provider_id AS providerId, language, watched_at AS watchedAt`;
 export type ProgressInput = { anilistId: number; malId?: number | null; episodeNumber: number; totalEpisodes?: number | null; title: string; coverImage?: string | null; genres?: string[]; currentTime: number; duration: number; providerId?: ProviderId | null; language?: PlaybackLanguage | null; completed: boolean; };
 
 export class PlaybackRepository {

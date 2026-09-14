@@ -51,15 +51,6 @@ const genresJson = (value: string[]) => JSON.stringify(value);
 
 export function createDataRouter(db: Database.Database) {
   const router = Router();
-  router.get("/stats", (_req, res) => {
-    const one = (sql: string) => Number((db.prepare(sql).get() as { value?: number } | undefined)?.value ?? 0);
-    const genreCounts = new Map<string, number>();
-    const sources = db.prepare("SELECT genres, 3 weight FROM favorites UNION ALL SELECT genres, CASE status WHEN 'WATCHING' THEN 2 ELSE 1 END FROM watchlist UNION ALL SELECT genres, CASE WHEN completed=1 THEN 5 ELSE 4 END FROM episode_progress WHERE current_time >= 30 OR completed=1").all() as Array<{ genres: string | null; weight: number }>;
-    for (const source of sources) try { for (const genre of JSON.parse(source.genres ?? "[]") as unknown[]) if (typeof genre === "string") genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + source.weight); } catch { /* old rows may have no metadata */ }
-    const topGenres = [...genreCounts].map(([genre, score]) => ({ genre, score })).sort((a, b) => b.score - a.score).slice(0, 8);
-    const recentActivity = db.prepare("SELECT anilist_id AS anilistId, episode_number AS episodeNumber, title, watched_at AS watchedAt, progress_percentage AS progressPercentage, completed FROM watch_history ORDER BY watched_at DESC LIMIT 8").all();
-    res.json({ success: true, data: { favorites: one("SELECT COUNT(*) value FROM favorites"), watchlist: one("SELECT COUNT(*) value FROM watchlist"), watching: one("SELECT COUNT(*) value FROM watchlist WHERE status='WATCHING'"), completedAnime: one("SELECT COUNT(*) value FROM watchlist WHERE status='COMPLETED'"), completedEpisodes: one("SELECT COUNT(*) value FROM episode_progress WHERE completed=1"), inProgressEpisodes: one("SELECT COUNT(*) value FROM episode_progress WHERE completed=0 AND current_time > 0"), estimatedWatchSeconds: one("SELECT COALESCE(SUM(CASE WHEN completed=1 THEN duration ELSE current_time END),0) value FROM episode_progress"), topGenres, recentActivity } });
-  });
   router.get("/data/export", (_req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=aniverse-backup.json");
     res.json({ app: "AniVerse", version: DATA_EXPORT_VERSION, exportedAt: new Date().toISOString(), favorites: camelRows(db, "favorites"), watchlist: camelRows(db, "watchlist"), settings: Object.fromEntries((camelRows(db, "app_settings") as Array<{ key: string; value: string }>).map(({ key, value }) => [key, value])), searchHistory: camelRows(db, "search_history"), recentlyViewed: camelRows(db, "recently_viewed"), episodeProgress: camelRows(db, "episode_progress"), watchHistory: camelRows(db, "watch_history") });

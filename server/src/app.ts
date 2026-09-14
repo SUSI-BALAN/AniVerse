@@ -83,12 +83,15 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api", createUserPlaybackRouter(repositories.playback));
   if (env.DATABASE_MODE === "postgres") {
     app.use("/api", createCloudDataRouter(options.postgresPool ?? getPostgresPool()));
-    app.use("/api", createUserInsightsRouter(repositories, options.animeService));
+
   } else {
     const database = options.database ?? getDatabase();
     app.use("/api", createDataRouter(database));
-    app.use("/api", createRecommendationRouter(database, options.animeService));
+
   }
+
+  app.use("/api", createUserInsightsRouter(repositories, options.animeService));
+  app.use("/api", createRecommendationRouter(repositories, options.animeService));
 
   app.use((_, response) => {
     response.status(404).json({

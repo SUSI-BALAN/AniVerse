@@ -15,7 +15,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("real API ownership for every pr
   await pool.query(readFileSync(new URL("./postgres-auth-fixture.sql",import.meta.url),"utf8"));await migratePostgres(pool);
   await pool.query("INSERT INTO auth.users(id) VALUES($1),($2) ON CONFLICT DO NOTHING",[a,b]);
   env.DATABASE_MODE="postgres";env.AUTH_MODE="supabase";
-  app=createApp({postgresPool:pool,repositories:{library:new PostgresUserLibraryRepository(pool),playback:new PostgresUserPlaybackRepository(pool)},tokenVerifier:async token=>token===a||token===b?{id:token}:null,animeService:{popular:async()=>({data:[],pagination:{page:1,perPage:25,total:0,hasNextPage:false}})} as never});
+  app=createApp({postgresPool:pool,repositories:{library:new PostgresUserLibraryRepository(pool),playback:new PostgresUserPlaybackRepository(pool)},tokenVerifier:async token=>token===a||token===b?{id:token}:null,animeService:{popular:async()=>({data:[],pagination:{page:1,perPage:25,total:0,hasNextPage:false}}),topRated:async()=>({data:[],pagination:{page:1,perPage:25,total:0,hasNextPage:false}})} as never});
  });
  afterAll(async()=>{Object.assign(env,original);await pool.query("DELETE FROM auth.users WHERE id=ANY($1::uuid[])",[[a,b]]);await pool.end();});
  it("isolates writes reads statistics recommendations export import and resets",async()=>{

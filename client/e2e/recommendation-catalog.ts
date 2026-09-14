@@ -1,0 +1,4 @@
+import { animeFixture, detailsFixture } from '../src/test/fixtures';
+export const recommendationAnime = [animeFixture, { ...animeFixture, id: 2, title: { english: 'Recommended Anime', romaji: null, native: null }, genres: ['Action'] }, { ...animeFixture, id: 3, title: { english: 'Romance Pick', romaji: null, native: null }, genres: ['Romance'] }, { ...animeFixture, id: 4, title: { english: 'Comedy Pick', romaji: null, native: null }, genres: ['Comedy'] }];
+const page = async () => ({ data: recommendationAnime, pagination: { page: 1, perPage: 25, total: 4, hasNextPage: false } });
+export const recommendationCatalog = { topRated: page, popular: page, trending: page, seasonal: page, browse: page, search: page, details: async (id: number) => ({ ...detailsFixture, id, recommendations: [recommendationAnime[id === 202 ? 2 : id === 901 ? 3 : 1]] }) };

@@ -15,9 +15,10 @@ type AnimeSectionProps = {
   viewAllLink?: string;
   error?: string | null;
   onRetry?: () => void;
+  reasons?: Record<number, string>;
 };
 
-export function AnimeSection({ title, subtitle, anime, loading, viewAllLink, error, onRetry }: AnimeSectionProps) {
+export function AnimeSection({ title, subtitle, anime, loading, viewAllLink, error, onRetry, reasons }: AnimeSectionProps) {
   const rail = useRef<HTMLDivElement>(null);
   const scroll = (direction: number) => rail.current?.scrollBy({ left: direction * rail.current.clientWidth * 0.75, behavior: "smooth" });
 
@@ -35,7 +36,7 @@ export function AnimeSection({ title, subtitle, anime, loading, viewAllLink, err
         <div ref={rail} className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:gap-4 sm:px-6 lg:mx-0 lg:px-0" tabIndex={0} aria-label={`${title} anime`}>
           {loading
             ? Array.from({ length: 7 }, (_, index) => <div key={index} className="w-[42vw] shrink-0 snap-start sm:w-44 lg:w-48"><AnimeCardSkeleton /></div>)
-            : anime.map((item) => <div key={item.id} className="w-[42vw] shrink-0 snap-start sm:w-44 lg:w-48"><AnimeCard anime={item} label={"relationType" in item ? item.relationType : null} /></div>)}
+            : anime.map((item) => <div key={item.id} className="w-[42vw] shrink-0 snap-start sm:w-44 lg:w-48"><AnimeCard anime={item} label={"relationType" in item ? item.relationType : null} />{reasons?.[item.id] && <p className="mt-2 break-words text-xs leading-relaxed text-muted">{reasons[item.id]}</p>}</div>)}
         </div>
       )}
     </section>

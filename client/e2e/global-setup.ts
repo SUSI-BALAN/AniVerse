@@ -2,6 +2,7 @@ import type { FullConfig } from "@playwright/test";
 import type { Server } from "node:http";
 import { fileURLToPath } from "node:url";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
+import { recommendationCatalog } from './recommendation-catalog';
 
 export default async function globalSetup(_config: FullConfig) {
   process.env.NODE_ENV="test";
@@ -15,7 +16,7 @@ export default async function globalSetup(_config: FullConfig) {
   process.env.VITE_PROXY_TARGET = "http://127.0.0.1:4174";
   const [{ initializeDatabase }, { createApp }] = await Promise.all([import("../../server/src/database/connection.ts"), import("../../server/src/app.ts")]);
   initializeDatabase();
-  const api: Server = createApp().listen(4174, "127.0.0.1");
+  const api: Server = createApp({ animeService: recommendationCatalog as never }).listen(4174, "127.0.0.1");
   await new Promise<void>((resolve, reject) => { api.once("listening", resolve); api.once("error", reject); });
   const root = fileURLToPath(new URL("..", import.meta.url));
   const vite: ViteDevServer = await createViteServer({ root, server: { host: "127.0.0.1", port: 4173, strictPort: true } });

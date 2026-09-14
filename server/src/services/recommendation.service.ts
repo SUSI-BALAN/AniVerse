@@ -1,9 +1,45 @@
-import type Database from "better-sqlite3";
-import type { AnimeListServiceContract } from "./anilist.service.js";
-export class RecommendationService {
-  constructor(private readonly anime: AnimeListServiceContract, private readonly db: Database.Database) {}
-  async getRecommendations(limit = 12) { const favorites = this.db.prepare("SELECT anilist_id FROM favorites").all() as Array<{ anilist_id: number }>; const completed = new Set((this.db.prepare("SELECT anilist_id FROM episode_progress WHERE completed=1").all() as Array<{ anilist_id: number }>).map((row) => row.anilist_id)); const weights = this.genreWeights(); const favoriteIds = new Set(favorites.map((item) => item.anilist_id)); const page = await this.anime.popular(1, Math.min(Math.max(limit * 2, 12), 25)); const seen = new Set<number>(); return page.data.filter((item) => !completed.has(item.id) && !seen.has(item.id) && !favoriteIds.has(item.id)).map((anime) => { seen.add(anime.id); const match = anime.genres.reduce((sum, genre) => sum + (weights.get(genre) ?? 0), 0); return { anime, score: match + (anime.averageScore ?? 0) / 20 + (anime.popularity ? 1 : 0), reason: match > 0 ? `Because you like ${anime.genres.find((genre) => weights.has(genre))}` : "Popular with AniVerse viewers" }; }).sort((a, b) => b.score - a.score).slice(0, limit).map(({ anime, reason }) => ({ anime, reason })); }
-  async getBecauseYouWatched(limit = 12) { const source = this.db.prepare("SELECT anilist_id AS id FROM episode_progress WHERE completed = 1 GROUP BY anilist_id ORDER BY MAX(COALESCE(completed_at, updated_at)) DESC LIMIT 1").get() as { id?: number } | undefined; if (!source?.id) return null; const details = await this.anime.details(source.id); const related = details.recommendations?.length ? details.recommendations : details.relatedAnime; const completed = new Set((this.db.prepare("SELECT anilist_id FROM episode_progress WHERE completed=1").all() as Array<{ anilist_id: number }>).map((row) => row.anilist_id)); const title = details.title.english ?? details.title.romaji ?? details.title.native ?? "this anime"; return { sourceAnime: { id: details.id, title, coverImage: details.coverImage.large }, recommendations: related.filter((item) => !completed.has(item.id) && item.id !== details.id).slice(0, Math.min(Math.max(limit, 1), 20)).map((anime) => ({ anime, reason: `Recommended for viewers of ${title}` })) }; }
-  private genreWeights() { const weights = new Map<string, number>(); const rows = this.db.prepare("SELECT anilist_id, title FROM favorites UNION ALL SELECT anilist_id, title FROM recently_viewed UNION ALL SELECT anilist_id, title FROM watchlist").all() as Array<{ anilist_id: number; title: string }>; for (const row of rows) { const cached = this.db.prepare("SELECT payload FROM anime_cache WHERE anilist_id = ? ORDER BY cached_at DESC LIMIT 1").get(row.anilist_id) as { payload?: string } | undefined; try { const anime = cached?.payload ? JSON.parse(cached.payload) as { genres?: unknown } : null; if (Array.isArray(anime?.genres)) for (const genre of anime.genres) if (typeof genre === "string") weights.set(genre, (weights.get(genre) ?? 0) + 1); } catch { /* stale cache is ignored */ } } return weights; }
-}
+import type { AnimeListServiceContract } from './anilist.service.js';
+import type { UserRepositories } from '../repositories/repositoryFactory.js';
+import { AppError } from '../utils/appError.js';
+import { deduplicateCandidates, displayGenre, genrePreferences, normalizeSignals, rankRecommendations, RECOMMENDATION_RULES, sourceSignals, type Candidate } from './recommendation.engine.js';
 
+export class RecommendationService {
+  private readonly inFlight = new Map<string, ReturnType<RecommendationService['calculate']>>();
+  constructor(private readonly anime: AnimeListServiceContract, private readonly repositories: UserRepositories, private readonly clock: () => number = Date.now) {}
+  async signals(user: string) {
+    const [favorites, watchlist, progress, viewed, history] = await Promise.all([
+      this.repositories.library.favorites(user), this.repositories.library.watchlist(user), this.repositories.playback.allProgress(user), this.repositories.library.recentlyViewed(user, 250), this.repositories.playback.history(user, 250)
+    ]);
+    return normalizeSignals({ favorites, watchlist, progress, viewed, history }, this.clock());
+  }
+  getBundle(user: string) {
+    const existing = this.inFlight.get(user); if (existing) return existing;
+    const promise = this.calculate(user).finally(() => { if (this.inFlight.get(user) === promise) this.inFlight.delete(user); });
+    this.inFlight.set(user, promise); return promise;
+  }
+  private async calculate(user: string) {
+    const start = performance.now(), signals = await this.signals(user), sources = sourceSignals(signals);
+    const genres = genrePreferences(signals).slice(0, RECOMMENDATION_RULES.maxGenres);
+    // Two public pages + at most two genre pages + at most two details calls = six.
+    const jobs: Array<() => Promise<Candidate[]>> = [
+      async () => (await this.anime.popular(1, RECOMMENDATION_RULES.pageSize)).data.slice(0, 25).map(anime => ({ anime, similarities: [], continuations: [], catalogSource: 'Popular on AniList' })),
+      async () => (await this.anime.topRated(1, RECOMMENDATION_RULES.pageSize)).data.slice(0, 25).map(anime => ({ anime, similarities: [], continuations: [], catalogSource: 'Top rated on AniList' }))
+    ];
+    for (const { genre } of genres) jobs.push(async () => (await this.anime.browse({ genre: displayGenre(genre), sort: 'SCORE' }, 1, 25)).data.slice(0, 25).map(anime => ({ anime, similarities: [], continuations: [], catalogSource: 'Top rated on AniList' })));
+    for (const source of sources) jobs.push(async () => {
+      const details = await this.anime.details(source.id);
+      return [
+        ...details.recommendations.slice(0, 12).map(anime => ({ anime, similarities: [source.id], continuations: [] })),
+        ...details.relatedAnime.filter(a => a.relationType === 'SEQUEL' && source.completed).slice(0, 12).map(anime => ({ anime, similarities: [], continuations: [source.id] }))
+      ];
+    });
+    const results = await Promise.allSettled(jobs.map(job => Promise.resolve().then(job)));
+    const success = results.filter((r): r is PromiseFulfilledResult<Candidate[]> => r.status === 'fulfilled');
+    if (!success.length) throw new AppError(503, 'RECOMMENDATIONS_UNAVAILABLE', 'Recommendations are temporarily unavailable. Please try again later.');
+    const candidates = deduplicateCandidates(success.flatMap(r => r.value));
+    const watched = sources.filter(s => s.watched || s.completed).sort((a, b) => (b.lastActivity ?? 0) - (a.lastActivity ?? 0) || a.id - b.id)[0];
+    const because = watched ? { sourceAnime: { id: watched.id, title: watched.title, coverImage: null as string | null }, recommendations: rankRecommendations(signals, candidates, 20, 'similarity', watched.id) } : null;
+    const recommendations = rankRecommendations(signals, candidates, 20);
+    return { recommendations, because, continuations: rankRecommendations(signals, candidates, 20, 'continuation'), meta: { personalized: recommendations.some(r => r.personalized), partial: success.length !== jobs.length, failedSources: jobs.length - success.length }, metrics: { inputAnimeCount: signals.length, candidateCount: candidates.length, catalogCalls: jobs.length, repositoryQueries: 5, durationMs: performance.now() - start } };
+  }
+}
