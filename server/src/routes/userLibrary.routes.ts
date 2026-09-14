@@ -9,7 +9,7 @@ import { AppError } from "../utils/appError.js";
 const id=z.coerce.number().int().positive();
 const snapshot=z.object({anilistId:id,malId:z.number().int().positive().nullable().optional(),title:z.string().trim().min(1).max(240),titleRomaji:z.string().trim().max(240).nullable().optional(),coverImage:z.string().url().max(2000).nullable().optional(),bannerImage:z.string().url().max(2000).nullable().optional(),format:z.string().trim().max(30).nullable().optional(),seasonYear:z.number().int().min(1900).max(3000).nullable().optional(),averageScore:z.number().min(0).max(100).nullable().optional(),genres:z.array(z.string().trim().min(1).max(40)).max(30).optional()});
 const status=z.enum(WATCHLIST_STATUSES);
-const settingKey=z.enum(["theme","title_preference","reduced_motion","show_adult_content","default_list_status","default_audio_language","autoplay","auto_next","default_provider"]);
+const settingKey=z.enum(["library_view_mode","library_page_size","theme","title_preference","reduced_motion","show_adult_content","default_list_status","default_audio_language","autoplay","auto_next","default_provider"]);
 const settingValue=z.string().trim().min(1).max(100);
 const user=(request:AuthenticatedRequest)=>{if(!request.authUser)throw new AppError(401,"AUTH_REQUIRED","Authentication is required.");return request.authUser.id;};
 const action=(handler:(request:AuthenticatedRequest)=>Promise<unknown>,created=false)=>async(req:AuthenticatedRequest,res:Response,next:NextFunction)=>{try{res.status(created?201:200).json({success:true,data:await handler(req)});}catch(error){next(error);}};

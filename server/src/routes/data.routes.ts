@@ -1,3 +1,4 @@
+import {settingValues} from "../utils/validation.js";
 import { Router } from "express";
 import { z } from "zod";
 import type Database from "better-sqlite3";
@@ -6,11 +7,7 @@ export const DATA_EXPORT_VERSION = 1;
 const PROVIDERS = ["cinextream", "yenime", "zokoanime"] as const;
 const LANGUAGES = ["sub", "dub"] as const;
 const STATUSES = ["PLANNING", "WATCHING", "COMPLETED", "ON_HOLD", "DROPPED"] as const;
-const SETTING_VALUES: Record<string, readonly string[]> = {
-  theme: ["dark"], title_preference: ["english", "romaji", "native"], reduced_motion: ["true", "false"],
-  show_adult_content: ["true", "false"], default_list_status: STATUSES,
-  default_audio_language: LANGUAGES, autoplay: ["true", "false"], auto_next: ["true", "false"], default_provider: PROVIDERS
-};
+const SETTING_VALUES: Record<string, readonly string[]> = settingValues;
 const timestamp = z.string().min(1).max(40).optional();
 const nullableUrl = z.string().url().max(2000).nullable().optional();
 const completedValue = z.union([z.boolean(), z.literal(0), z.literal(1)]).transform(Boolean);

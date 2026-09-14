@@ -1,0 +1,30 @@
+import Database from 'better-sqlite3';
+import request from 'supertest';
+import {afterEach,beforeEach,describe,expect,it} from 'vitest';
+import {initializeDatabase} from '../src/database/connection.js';
+import {createApp} from '../src/app.js';
+import {env} from '../src/utils/env.js';
+import {SQLiteLibraryQueryRepository,libraryQuerySchema} from '../src/repositories/libraryQuery.repository.js';
+import {FavoritesRepository,WatchlistRepository,RecentlyViewedRepository} from '../src/repositories/localLibrary.repository.js';
+describe('Stage 10.2 bounded SQLite library queries',()=>{
+ let db:Database.Database;let app:ReturnType<typeof createApp>;const original={...env};
+ beforeEach(()=>{Object.assign(env,{NODE_ENV:'test',AUTH_MODE:'local',DATABASE_MODE:'sqlite'});db=new Database(':memory:');initializeDatabase(db);app=createApp({database:db});
+  const fav=new FavoritesRepository(db),watch=new WatchlistRepository(db),recent=new RecentlyViewedRepository(db);
+  for(let i=1;i<=30;i++){const anime={anilistId:i,title:i<=2?'Equal title':`Anime ${String(i).padStart(2,'0')}`,titleRomaji:`Romaji ${i}`,genres:i%2?['Action']:['Drama'],seasonYear:2000+i,averageScore:i};fav.add(anime);watch.add(anime,i%2?'WATCHING':'PLANNING');recent.record(anime);}
+  db.prepare("UPDATE favorites SET added_at='2025-01-01 00:00:00'").run();
+ });
+ afterEach(()=>{db.close();Object.assign(env,original);});
+ const query=(c='favorites',q='')=>request(app).get(`/api/library/${c}${q?'?'+q:''}`);
+ it('preserves legacy array responses and defaults to 24 bounded items',async()=>{expect(Array.isArray((await request(app).get('/api/favorites')).body.data)).toBe(true);const r=await query();expect(r.status).toBe(200);expect(r.headers['cache-control']).toBe('no-store');expect(r.body.data).toMatchObject({total:30,page:1,pageSize:24,totalPages:2});expect(r.body.data.items).toHaveLength(24);});
+ it('has stable page boundaries, tie breakers and empty pages',async()=>{const a=(await query('favorites','pageSize=12')).body.data,b=(await query('favorites','pageSize=12&page=2')).body.data;expect(a.items.map((x:{anilistId:number})=>x.anilistId)).toEqual(Array.from({length:12},(_,i)=>i+1));expect(b.items[0].anilistId).toBe(13);expect((await query('favorites','page=99')).body.data.items).toEqual([]);});
+ it('searches stored English and romaji titles without external calls',async()=>{expect((await query('favorites','search=romaji%2030')).body.data.total).toBe(1);expect((await query('favorites','search=equal%20TITLE')).body.data.total).toBe(2);expect((await query('favorites','search=%25')).body.data.total).toBe(0);});
+ it('normalizes genre case and filters watchlist status',async()=>{const r=(await query('watchlist','genre=action&status=WATCHING')).body.data;expect(r.total).toBe(15);expect(r.items.every((x:{status:string})=>x.status==='WATCHING')).toBe(true);expect(r.genres).toEqual(['Action','Drama']);});
+ it.each(['title','score','year'])('sorts %s deterministically in both directions',async sort=>{const a=(await query('favorites',`sort=${sort}&direction=asc`)).body.data.items,b=(await query('favorites',`sort=${sort}&direction=desc`)).body.data.items;expect(a[0].anilistId).not.toBe(b[0].anilistId);if(sort!=='title'){expect(a[0].anilistId).toBe(1);expect(b[0].anilistId).toBe(30);}});
+ it.each(['page=0','page=-1','page=1.5','pageSize=100','pageSize=13','sort=invalid','direction=invalid','search='+ 'a'.repeat(101),'genre='+ 'a'.repeat(41),'userId=other','status=INVALID'])('rejects invalid query %s',async q=>{expect((await query('favorites',q)).status).toBe(400);});
+ it('rejects irrelevant collection filters and sorts',async()=>{expect((await query('favorites','status=WATCHING')).status).toBe(400);expect((await query('watch-history','sort=score')).status).toBe(400);});
+ it('requires auth for paged reads and compact membership in cloud mode',async()=>{Object.assign(env,{AUTH_MODE:'supabase'});const cloud=createApp({database:db,tokenVerifier:async()=>null});for(const path of ['/api/library/favorites','/api/library-membership'])expect((await request(cloud).get(path)).status).toBe(401);});
+ it('preserves data across initialization and settings export/import/reset isolation',async()=>{initializeDatabase(db);expect((await query()).body.data.total).toBe(30);expect((await request(app).patch('/api/settings/library_view_mode').send({value:'list'})).status).toBe(200);expect((await request(app).patch('/api/settings/library_page_size').send({value:'48'})).status).toBe(200);expect((await request(app).patch('/api/settings/library_page_size').send({value:'999'})).status).toBe(400);
+  const backup=(await request(app).get('/api/data/export')).body;expect(backup.settings.library_view_mode).toBe('list');await request(app).delete('/api/data/reset/favorites');expect((await query()).body.data.total).toBe(0);expect((await query('watchlist')).body.data.total).toBe(30);expect((await request(app).post('/api/data/import').send(backup)).status).toBe(200);expect((await query()).body.data.total).toBe(30);
+ });
+ it('returns matching direct repository results and normalized stored genres',async()=>{const r=await new SQLiteLibraryQueryRepository(db).list('local','favorites',libraryQuerySchema.parse({genre:'Action',pageSize:12}));expect(r.total).toBe(15);expect(Array.isArray(r.items[0].genres)).toBe(true);});
+});

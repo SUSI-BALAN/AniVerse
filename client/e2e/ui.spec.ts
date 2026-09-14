@@ -29,6 +29,8 @@ async function mockMetadata(page: Page) {
   const watchlistRows: Record<string, unknown>[] = [];
   const historyRows: Record<string, unknown>[] = [];
   let settings: Record<string, string> = { theme: "dark", title_preference: "english", reduced_motion: "false", show_adult_content: "false", default_audio_language: "sub", autoplay: "false", auto_next: "true" };
+  await page.route("**/api/library-membership",route=>route.fulfill({json:{success:true,data:{favoriteIds:favoriteRows.map(x=>x.anilistId),watchlist:watchlistRows.map(x=>({anilistId:x.anilistId,status:x.status})),recentlyViewedCount:historyRows.length}}}));
+  await page.route("**/api/library/**",route=>{const url=new URL(route.request().url()),collection=url.pathname.split('/').pop();const rows=collection==='favorites'?favoriteRows:collection==='watchlist'?watchlistRows:collection==='recently-viewed'?historyRows:[];const pageSize=Number(url.searchParams.get('pageSize')??24),page=Number(url.searchParams.get('page')??1);return route.fulfill({json:{success:true,data:{items:rows.slice((page-1)*pageSize,page*pageSize),page,pageSize,total:rows.length,totalPages:Math.ceil(rows.length/pageSize),genres:[]}}});});
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   await page.route("https://images.test/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") }));
   await page.route("**/api/favorites**", async (route) => {
@@ -147,12 +149,15 @@ test("local favorites and My List actions persist through the UI", async ({ page
   await expect(page.getByRole("button", { name: "Favorite" })).toBeVisible();
   await page.getByRole("button", { name: "Favorite" }).click();
   await expect(page.getByRole("button", { name: "Favorited" })).toBeVisible();
+  await expect(page.getByText("Added to Favorites",{exact:true})).toBeVisible();
   await page.getByRole("button", { name: /My List/ }).click();
   await page.getByRole("menuitem", { name: "Watching" }).click();
+  await expect(page.getByText("My List updated",{exact:true})).toBeVisible();
   await page.goto("/my-list");
   await expect(page.getByRole("heading", { name: "Frieren: Beyond Journey's End" })).toBeVisible();
   await page.goto("/history");
-  await expect(page.getByRole("link", { name: "Frieren: Beyond Journey's End", exact: true })).toBeVisible();
+  await page.getByRole("button", {name:"Recently Viewed",exact:true}).click();
+  await expect(page.getByRole("heading", { name: "Frieren: Beyond Journey's End", exact: true })).toBeVisible();
   await page.goto("/settings");
   const titlePreference = page.getByLabel("Title preference");
   await titlePreference.selectOption("romaji");

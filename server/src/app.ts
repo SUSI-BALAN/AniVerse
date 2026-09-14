@@ -1,3 +1,5 @@
+import {createLibraryQueryRouter} from './routes/libraryQuery.routes.js';
+import {SQLiteLibraryQueryRepository,PostgresLibraryQueryRepository} from './repositories/libraryQuery.repository.js';
 import cors from "cors";
 import type { Pool } from "pg";
 import express from "express";
@@ -75,6 +77,8 @@ export function createApp(options: AppOptions = {}) {
     ? new PostgresUserProfileRepository(options.postgresPool ?? getPostgresPool())
     : new SQLiteUserProfileRepository(options.database ?? getDatabase()));
   app.use('/api', createProfileRouter(profile));
+  const queries = repositories.queries ?? (env.DATABASE_MODE === 'postgres' ? new PostgresLibraryQueryRepository(options.postgresPool ?? getPostgresPool()) : new SQLiteLibraryQueryRepository(options.database ?? getDatabase()));
+  app.use('/api', createLibraryQueryRouter(queries));
   app.use("/api", createUserLibraryRouter(repositories.library));
   app.use("/api", createUserPlaybackRouter(repositories.playback));
   if (env.DATABASE_MODE === "postgres") {
