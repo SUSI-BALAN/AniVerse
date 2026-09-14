@@ -1,0 +1,11 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
+import { AnimeHero } from './AnimeHero';
+import { animeFixture } from '../test/fixtures';
+const state = vi.hoisted(() => ({ settings: { reduced_motion: 'false' } }));
+vi.mock('../context/LibraryContext', () => ({ useOptionalLibrary: () => state }));
+afterEach(() => { vi.restoreAllMocks(); state.settings.reduced_motion = 'false'; });
+const items = [animeFixture, { ...animeFixture, id: 2, title: { ...animeFixture.title, english: 'Bleach' } }];
+it('exposes persistent pause and pauses rotation while keyboard focus is inside', () => { const clear = vi.spyOn(window, 'clearInterval'); render(<MemoryRouter><AnimeHero anime={items} loading={false} /></MemoryRouter>); const next = screen.getByRole('button', { name: 'Next featured anime' }); fireEvent.focus(next); expect(clear).toHaveBeenCalled(); fireEvent.click(screen.getByRole('button', { name: 'Pause rotation' })); expect(screen.getByRole('button', { name: 'Play rotation' })).toHaveAttribute('aria-pressed', 'true'); });
+it('honors the saved reduced motion preference without disabling manual navigation', () => { state.settings.reduced_motion = 'true'; render(<MemoryRouter><AnimeHero anime={items} loading={false} /></MemoryRouter>); expect(screen.getByRole('button', { name: 'Rotation paused' })).toBeDisabled(); expect(screen.getByRole('button', { name: 'Next featured anime' })).toBeEnabled(); });

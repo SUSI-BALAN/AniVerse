@@ -6,6 +6,8 @@ import { AnimeCard } from "./AnimeCard";
 import { AnimeCardSkeleton } from "./AnimeCardSkeleton";
 import { ErrorState } from "./PageState";
 import { EmptyState } from "./EmptyState";
+import { useReducedMotion } from 'framer-motion';
+import { useOptionalLibrary } from '../context/LibraryContext';
 
 type AnimeSectionProps = {
   title: string;
@@ -20,7 +22,9 @@ type AnimeSectionProps = {
 
 export function AnimeSection({ title, subtitle, anime, loading, viewAllLink, error, onRetry, reasons }: AnimeSectionProps) {
   const rail = useRef<HTMLDivElement>(null);
-  const scroll = (direction: number) => rail.current?.scrollBy({ left: direction * rail.current.clientWidth * 0.75, behavior: "smooth" });
+  const systemReduced = useReducedMotion(), library = useOptionalLibrary();
+  const reduced = systemReduced || library?.settings.reduced_motion === 'true';
+  const scroll = (direction: number) => rail.current?.scrollBy({ left: direction * rail.current.clientWidth * 0.75, behavior: reduced ? "auto" : "smooth" });
 
   return (
     <section className="py-8" aria-labelledby={`section-${title.replaceAll(" ", "-").toLowerCase()}`}>

@@ -40,6 +40,8 @@ export class RecommendationService {
     const watched = sources.filter(s => s.watched || s.completed).sort((a, b) => (b.lastActivity ?? 0) - (a.lastActivity ?? 0) || a.id - b.id)[0];
     const because = watched ? { sourceAnime: { id: watched.id, title: watched.title, coverImage: null as string | null }, recommendations: rankRecommendations(signals, candidates, 20, 'similarity', watched.id) } : null;
     const recommendations = rankRecommendations(signals, candidates, 20);
-    return { recommendations, because, continuations: rankRecommendations(signals, candidates, 20, 'continuation'), meta: { personalized: recommendations.some(r => r.personalized), partial: success.length !== jobs.length, failedSources: jobs.length - success.length }, metrics: { inputAnimeCount: signals.length, candidateCount: candidates.length, catalogCalls: jobs.length, repositoryQueries: 5, durationMs: performance.now() - start } };
+    const favoriteGenre = genres[0];
+    const genreDiscovery = favoriteGenre ? { genre: displayGenre(favoriteGenre.genre), recommendations: rankRecommendations(signals, candidates.filter(c => c.anime.genres.some(g => g.trim().toLowerCase() === favoriteGenre.genre)), 20) } : null;
+    return { recommendations, because, genreDiscovery, continuations: rankRecommendations(signals, candidates, 20, 'continuation'), meta: { signalCount: signals.filter(s => s.favorite || s.watched || s.listed || s.completed).length, personalized: recommendations.some(r => r.personalized), partial: success.length !== jobs.length, failedSources: jobs.length - success.length }, metrics: { inputAnimeCount: signals.length, candidateCount: candidates.length, catalogCalls: jobs.length, repositoryQueries: 5, durationMs: performance.now() - start } };
   }
 }

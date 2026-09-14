@@ -26,6 +26,7 @@ import { createUserInsightsRouter } from "./routes/userInsights.routes.js";
 import { getPostgresPool } from "./database/postgres.js";
 import { createApiRateLimit } from "./middleware/rateLimits.js";
 import {createProfileRouter} from './routes/profile.routes.js';
+import { createHomeRouter } from './routes/home.routes.js';
 import {PostgresUserProfileRepository, SQLiteUserProfileRepository} from './repositories/profile.repository.js';
 
 type AppOptions = {
@@ -77,6 +78,7 @@ export function createApp(options: AppOptions = {}) {
     ? new PostgresUserProfileRepository(options.postgresPool ?? getPostgresPool())
     : new SQLiteUserProfileRepository(options.database ?? getDatabase()));
   app.use('/api', createProfileRouter(profile));
+  app.use('/api', createHomeRouter({ ...repositories, profile }, options.animeService));
   const queries = repositories.queries ?? (env.DATABASE_MODE === 'postgres' ? new PostgresLibraryQueryRepository(options.postgresPool ?? getPostgresPool()) : new SQLiteLibraryQueryRepository(options.database ?? getDatabase()));
   app.use('/api', createLibraryQueryRouter(queries));
   app.use("/api", createUserLibraryRouter(repositories.library));

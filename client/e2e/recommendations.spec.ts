@@ -9,11 +9,11 @@ test('local recommendation reasons and focused favorite invalidation', async ({ 
     await page.getByRole('link', { name: 'View details for Recommended Anime', exact: true }).first().click();
     await page.getByRole('button', { name: 'Favorite', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Favorited', exact: true })).toBeVisible();
-    const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === '/api/recommendations/home' && r.status() === 200);
+    const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === '/api/home' && r.status() === 200);
     await page.goto('/'); await refreshed;
     await expect(page.getByText('Because you like Action').first()).toBeVisible();
     await expect(page.getByText('Similar to your favorite Action Source')).toHaveCount(0);
-    expect(reads).toContain('/api/recommendations/home'); expect(reads).not.toContain('/api/watchlist'); expect(reads).not.toContain('/api/history');
+    expect(reads).toContain('/api/home'); expect(reads).not.toContain('/api/watchlist'); expect(reads).not.toContain('/api/history');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { await request.delete('/api/favorites/201'); await request.delete('/api/favorites/2'); }
 });
