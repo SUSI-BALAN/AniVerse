@@ -71,3 +71,9 @@ Render free-tier cold starts may affect first-request latency. Manual real
 screen-reader and production-device Lighthouse measurements are unavailable.
 Observability remains intentionally log/in-process based, and streaming
 providers remain disabled.
+
+The first GitHub run exposed a CI-only axe capture during the 220 ms route
+opacity transition. Effective text contrast briefly fell below AA while the
+page was fading in. The route transition now retains vertical motion without
+altering content opacity; the 22-scenario local accessibility suite and the
+isolated-cloud login/register axe scan passed after the correction.
