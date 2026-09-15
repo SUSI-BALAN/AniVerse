@@ -12,8 +12,10 @@ import type {
 import { AppError } from "../utils/appError.js";
 import { env } from "../utils/env.js";
 import { sanitizeDescription } from "../utils/sanitizeDescription.js";
+import { logEvent } from '../utils/observability.js';
 
 type JsonObject = Record<string, unknown>;
+export type AniListMetrics = { cacheHit: number; cacheMiss: number; coalesced: number };
 
 type AniListPage = {
   pageInfo?: {
@@ -208,10 +210,12 @@ function normalizePage(value: unknown, requestedPage: number, requestedPerPage: 
 }
 
 export class AniListService {
+  private readonly metrics: AniListMetrics = { cacheHit: 0, cacheMiss: 0, coalesced: 0 };
   constructor(
     private readonly cache: AnimeCacheRepositoryContract = createAnimeCacheRepository(),
     private readonly fetcher: typeof fetch = globalThis.fetch
   ) {}
+  getMetrics(): Readonly<AniListMetrics> { return { ...this.metrics }; }
 
   search(query: string, page: number, perPage: number): Promise<AnimePage> {
     return this.coalescedPage({ page, perPage, search: query, sort: ["SEARCH_MATCH", "POPULARITY_DESC"] });
@@ -269,7 +273,8 @@ export class AniListService {
   async details(id: number): Promise<AnimeDetails> {
     const cacheKey = `details:${id}`;
     const cached = this.cache.get<AnimeDetails>(cacheKey);
-    if (cached) return cached;
+    if (cached) { this.metrics.cacheHit++; logEvent('debug','anilist.cache',{dependency:'anilist',operation:'details',cache:'hit'}); return cached; }
+    this.metrics.cacheMiss++; logEvent('debug','anilist.cache',{dependency:'anilist',operation:'details',cache:'miss'});
 
     const result = await this.request<{ Media?: unknown }>(DETAILS_QUERY, { id });
     if (!result.Media) {
@@ -317,7 +322,9 @@ export class AniListService {
 
   private async cachedPage(cacheKey: string, ttlSeconds: number, variables: JsonObject): Promise<AnimePage> {
     const cached = this.cache.get<AnimePage>(cacheKey);
-    if (cached) return cached;
+    const operation = cacheKey.split(':')[0];
+    if (cached) { this.metrics.cacheHit++; logEvent('debug','anilist.cache',{dependency:'anilist',operation,cache:'hit'}); return cached; }
+    this.metrics.cacheMiss++; logEvent('debug','anilist.cache',{dependency:'anilist',operation,cache:'miss'});
 
     const page = await this.coalescedPage(variables);
     this.cache.set(cacheKey, page, ttlSeconds);
@@ -337,7 +344,7 @@ export class AniListService {
   private coalescedPage(variables: JsonObject): Promise<AnimePage> {
     const key = JSON.stringify(Object.fromEntries(Object.entries(variables).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, Array.isArray(v) && k !== 'sort' ? [...v].sort() : v])));
     const existing = this.inFlight.get(key);
-    if (existing) return existing;
+    if (existing) { this.metrics.coalesced++; logEvent('debug','anilist.coalesced',{dependency:'anilist',operation:'catalog',coalesced:true}); return existing; }
     const promise = this.fetchPage(variables).finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, promise);
     return promise;
@@ -346,6 +353,8 @@ export class AniListService {
   private async request<T>(query: string, variables: JsonObject): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), env.ANILIST_TIMEOUT_MS);
+    const started = performance.now();
+    const operation = /query\s+([A-Za-z0-9_]+)/.exec(query)?.[1] ?? 'unknown';
 
     try {
       const response = await this.fetcher(env.ANILIST_API_URL, {
@@ -357,6 +366,8 @@ export class AniListService {
       const body = (await response.json().catch(() => null)) as { data?: T; errors?: unknown[] } | null;
 
       if (!response.ok || !body || body.errors?.length || !body.data) {
+        const retryAfter = response.headers.get('retry-after');
+        if (response.status === 429) logEvent('warn','anilist.rate_limit',{dependency:'anilist',dependencyStatus:429,operation,...(retryAfter && /^\d{1,6}$/.test(retryAfter)?{retryAfter:Number(retryAfter)}:{})});
         if (response.status === 403 || response.status === 429 || response.status >= 500) {
           throw new AppError(503, "ANILIST_UNAVAILABLE", "AniList is temporarily unavailable. Please try again later.");
         }
@@ -370,8 +381,10 @@ export class AniListService {
         );
       }
 
+      logEvent('info','dependency.completed',{dependency:'anilist',operation,durationMs:Math.round(performance.now()-started),success:true,dependencyStatus:Math.floor(response.status/100)+'xx'});
       return body.data;
     } catch (error) {
+      logEvent('warn','dependency.failed',{dependency:'anilist',operation,durationMs:Math.round(performance.now()-started),success:false,errorCode:error instanceof AppError?error.code:'ANILIST_ERROR'});
       if (error instanceof AppError) throw error;
       if (error instanceof Error && error.name === "AbortError") {
         throw new AppError(504, "ANILIST_TIMEOUT", "AniList took too long to respond. Please try again.");

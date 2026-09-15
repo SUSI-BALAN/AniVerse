@@ -9,7 +9,7 @@ describe('catalog request deduplication', () => {
     const fetcher = vi.fn(() => new Promise<Response>((done) => { resolve = done; }));
     vi.stubGlobal('fetch', fetcher);
     const a = searchAnime('shared request'), b = searchAnime('shared request');
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.waitFor(()=>expect(fetcher).toHaveBeenCalledTimes(1));
     resolve(new Response(JSON.stringify(body)));
     const [first, second] = await Promise.all([a, b]);
     expect(first).toEqual(body); expect(second).toBe(first);

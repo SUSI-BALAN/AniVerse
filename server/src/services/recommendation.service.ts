@@ -2,6 +2,7 @@ import type { AnimeListServiceContract } from './anilist.service.js';
 import type { UserRepositories } from '../repositories/repositoryFactory.js';
 import { AppError } from '../utils/appError.js';
 import { deduplicateCandidates, displayGenre, genrePreferences, normalizeSignals, rankRecommendations, RECOMMENDATION_RULES, sourceSignals, type Candidate } from './recommendation.engine.js';
+import { logEvent } from '../utils/observability.js';
 
 export class RecommendationService {
   private readonly inFlight = new Map<string, ReturnType<RecommendationService['calculate']>>();
@@ -42,6 +43,8 @@ export class RecommendationService {
     const recommendations = rankRecommendations(signals, candidates, 20);
     const favoriteGenre = genres[0];
     const genreDiscovery = favoriteGenre ? { genre: displayGenre(favoriteGenre.genre), recommendations: rankRecommendations(signals, candidates.filter(c => c.anime.genres.some(g => g.trim().toLowerCase() === favoriteGenre.genre)), 20) } : null;
-    return { recommendations, because, genreDiscovery, continuations: rankRecommendations(signals, candidates, 20, 'continuation'), meta: { signalCount: signals.filter(s => s.favorite || s.watched || s.listed || s.completed).length, personalized: recommendations.some(r => r.personalized), partial: success.length !== jobs.length, failedSources: jobs.length - success.length }, metrics: { inputAnimeCount: signals.length, candidateCount: candidates.length, catalogCalls: jobs.length, repositoryQueries: 5, durationMs: performance.now() - start } };
+    const metrics = { inputAnimeCount: signals.length, candidateCount: candidates.length, anilistRequestCount: jobs.length, resultCount: recommendations.length, repositoryQueries: 5, durationMs: Math.round(performance.now() - start), fallback: success.length !== jobs.length };
+    logEvent('info','recommendation.completed',metrics);
+    return { recommendations, because, genreDiscovery, continuations: rankRecommendations(signals, candidates, 20, 'continuation'), meta: { signalCount: signals.filter(s => s.favorite || s.watched || s.listed || s.completed).length, personalized: recommendations.some(r => r.personalized), partial: success.length !== jobs.length, failedSources: jobs.length - success.length }, metrics: { inputAnimeCount: signals.length, candidateCount: candidates.length, catalogCalls: jobs.length, repositoryQueries: 5, durationMs: metrics.durationMs } };
   }
 }

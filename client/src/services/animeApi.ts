@@ -1,14 +1,12 @@
 import type { AnimeDetails, AnimePageResponse, AnimeSeason, BrowseFilters } from "../types/anime";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
-type ApiErrorBody = { success?: false; error?: { code?: string; message?: string } };
+import { apiError, apiFetch } from './apiClient';
 
 export class AnimeApiError extends Error {
   constructor(
     message: string,
     public readonly code = "NETWORK_ERROR",
-    public readonly status = 0
+    public readonly status = 0,
+    public readonly requestId?: string
   ) {
     super(message);
   }
@@ -27,10 +25,15 @@ const inFlight = new Map<string, { promise: Promise<unknown>; signal?: AbortSign
 async function performRequest<T>(path: string, signal?: AbortSignal): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { signal });
+    response = await apiFetch(path, { signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
     throw new AnimeApiError("We couldn't reach AniVerse. Check your connection and try again.");
+  }
+
+  if (!response.ok) {
+    const correlated=await apiError(response,"We couldn't load anime information right now. Please try again.");
+    throw new AnimeApiError(correlated.message,correlated.code,response.status,correlated.requestId);
   }
 
   const text = await response.text();
@@ -39,15 +42,6 @@ async function performRequest<T>(path: string, signal?: AbortSignal): Promise<T>
     body = text ? JSON.parse(text) : null;
   } catch {
     throw new AnimeApiError("AniVerse returned an unexpected response.", "INVALID_RESPONSE", response.status);
-  }
-
-  if (!response.ok) {
-    const apiError = body as ApiErrorBody;
-    throw new AnimeApiError(
-      apiError.error?.message ?? "We couldn't load anime information right now. Please try again.",
-      apiError.error?.code,
-      response.status
-    );
   }
 
   return body as T;

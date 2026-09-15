@@ -3,6 +3,7 @@ import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest, AuthUser } from "../types/auth.types.js";
 import { AppError } from "../utils/appError.js";
 import { env } from "../utils/env.js";
+import { logEvent, markAuthenticated } from '../utils/observability.js';
 
 export type TokenVerifier = (token: string) => Promise<AuthUser | null>;
 
@@ -13,8 +14,9 @@ function supabaseClient() {
 }
 
 export const verifySupabaseToken: TokenVerifier = async (token) => {
-  const { data, error } = await supabaseClient().auth.getUser(token);
-  return error || !data.user ? null : { id: data.user.id, email: data.user.email, joinedAt: data.user.created_at ?? null };
+  const started=performance.now();
+  try{const { data, error } = await supabaseClient().auth.getUser(token);logEvent(error?'warn':'debug',error?'dependency.failed':'dependency.completed',{dependency:'supabase_auth',operation:'verify_token',durationMs:Math.round(performance.now()-started),success:!error});return error || !data.user ? null : { id: data.user.id, email: data.user.email, joinedAt: data.user.created_at ?? null };}
+  catch(error){logEvent('warn','dependency.failed',{dependency:'supabase_auth',operation:'verify_token',durationMs:Math.round(performance.now()-started),success:false,errorCode:'AUTH_DEPENDENCY_FAILED'});throw error;}
 };
 
 const bearer = (request: AuthenticatedRequest) => {
@@ -34,10 +36,12 @@ export function createAuthMiddleware(verifier: TokenVerifier = verifySupabaseTok
     },
     requireAuth: async (request: AuthenticatedRequest, _response: Response, next: NextFunction) => {
       try {
-        if (env.AUTH_MODE === "supabase" && !bearer(request)) throw new AppError(401, "AUTH_REQUIRED", "Please sign in to continue.");
+        if (env.AUTH_MODE === "supabase" && !bearer(request)) { logEvent('info','auth.required',{dependency:'supabase_auth'}); throw new AppError(401, "AUTH_REQUIRED", "Please sign in to continue."); }
         const user = await resolve(request);
-        if (!user) throw new AppError(401, "INVALID_SESSION", "Your session is invalid or has expired.");
+        if (!user) { logEvent('info','auth.invalid_token',{dependency:'supabase_auth'}); throw new AppError(401, "INVALID_SESSION", "Your session is invalid or has expired."); }
         request.authUser = user;
+        markAuthenticated();
+        logEvent('debug','auth.success',{dependency:'supabase_auth'});
         next();
       } catch (error) { next(error); }
     }

@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../utils/appError.js";
+import { logEvent, normalizeRoute, serializeError } from '../utils/observability.js';
 
 export const errorHandler: ErrorRequestHandler = (error, request, response, _next) => {
   response.locals.errorCode=error instanceof AppError?error.code:error instanceof ZodError?"VALIDATION_ERROR":"INTERNAL_ERROR";
@@ -15,6 +16,7 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
     return;
   }
   if (error instanceof ZodError) {
+    logEvent('info','validation.failed',{route:normalizeRoute(request.path),errorCode:'VALIDATION_ERROR',invalidFields:[...new Set(error.issues.map(issue=>String(issue.path[0]??'request')).filter(field=>/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(field)))]});
     response.status(400).json({
       success: false,
       error: {
@@ -34,7 +36,7 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
     return;
   }
 
-  console.error(JSON.stringify({ timestamp: new Date().toISOString(), level: "error", requestId, code: "INTERNAL_ERROR" }));
+  logEvent('error','request.failed',{route:normalizeRoute(request.path),errorCode:'INTERNAL_ERROR',error:serializeError(error)});
   response.status(500).json({
     success: false,
     error: { code: "INTERNAL_ERROR", message: "AniVerse encountered an unexpected error.", ...diagnostic }

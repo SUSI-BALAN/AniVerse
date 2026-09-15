@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Anime, Pagination } from "../types/anime";
+import { errorMessageWithReference } from '../services/observability';
 
 type PageFetcher = (signal: AbortSignal) => Promise<{ data: Anime[]; pagination: Pagination }>;
 
@@ -27,7 +28,7 @@ export function useAnimePage(fetcher: PageFetcher, dependencies: readonly unknow
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         if (reason instanceof DOMException && reason.name === "AbortError") return;
-        setError(reason instanceof Error ? reason.message : "We couldn't load anime information right now.");
+        setError(reason instanceof Error ? errorMessageWithReference(reason) : "We couldn't load anime information right now.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);

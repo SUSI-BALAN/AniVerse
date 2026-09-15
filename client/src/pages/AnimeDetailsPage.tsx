@@ -12,6 +12,7 @@ import { getAnimeDetails } from "../services/animeApi";
 import type { AnimeDetails } from "../types/anime";
 import { getAnimeTitle } from "../utils/animeTitle";
 import { useLibrary } from "../context/LibraryContext";
+import { errorMessageWithReference } from '../services/observability';
 import { WATCHLIST_STATUSES, type WatchlistStatus } from "../types/library";
 import { progressApi } from "../services/progressApi";
 import type { EpisodeProgress } from "../types/progress";
@@ -57,7 +58,7 @@ export function AnimeDetailsPage() {
           setInvalidId(true);
           return;
         }
-        setError(reason instanceof Error ? reason.message : "We couldn't load this anime right now.");
+        setError(reason instanceof Error ? errorMessageWithReference(reason) : "We couldn't load this anime right now.");
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();

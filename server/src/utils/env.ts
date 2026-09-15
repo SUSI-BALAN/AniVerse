@@ -20,6 +20,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_ANON_KEY: z.string().min(20).optional(),
   BUILD_ID: z.string().max(100).default("development"),
+  OBSERVABILITY_SLOW_MS: z.coerce.number().int().min(10).max(60000).default(500),
   ANILIST_API_URL: z.string().url().default("https://graphql.anilist.co"),
   CINEXTREAM_BASE_URL: z.string().optional().default(""),
   YENIME_BASE_URL: z.string().optional().default(""),

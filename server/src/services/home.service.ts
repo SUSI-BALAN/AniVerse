@@ -3,6 +3,7 @@ import type { EpisodeProgress } from '../types/progress.types.js';
 import type { UserRepositories } from '../repositories/repositoryFactory.js';
 import type { RecommendationService } from './recommendation.service.js';
 import type { Recommendation } from './recommendation.engine.js';
+import { logEvent } from '../utils/observability.js';
 
 export const HOME_LIMIT = 10;
 export type Section<T> = { status: 'ready'; data: T } | { status: 'error'; data: null; message: string };
@@ -20,13 +21,14 @@ async function section<T>(load: () => Promise<T>, message: string): Promise<Sect
 export class HomeService {
   constructor(private readonly repositories: UserRepositories, private readonly recommendations: RecommendationService) {}
   async get(user: string, scope: 'all' | 'personalized' | 'activity' = 'all') {
+    const started = performance.now();
     const [profile, continueWatching, recentlyCompleted, recommendations] = await Promise.all([
       scope === 'all' ? section(async () => { const p = await this.repositories.profile?.getProfile(user); return { displayName: p?.createdAt ? p.displayName : null }; }, 'Your greeting is temporarily unavailable.') : undefined,
       scope !== 'personalized' ? section(async () => uniqueProgress(await this.repositories.playback.continueWatching(user, HOME_LIMIT)), 'Continue Watching is temporarily unavailable.') : undefined,
       scope !== 'personalized' ? section(async () => uniqueProgress(await this.repositories.playback.recentlyCompleted(user, HOME_LIMIT)), 'Recently Completed is temporarily unavailable.') : undefined,
       section(() => this.recommendations.getBundle(user), 'Recommendations are temporarily unavailable.')
     ]);
-    if (recommendations.status === 'error') return { profile, continueWatching, recentlyCompleted, personalized: recommendations };
+    if (recommendations.status === 'error') { logEvent('warn','home.completed',{durationMs:Math.round(performance.now()-started),sectionCount:[profile,continueWatching,recentlyCompleted,recommendations].filter(Boolean).length,partialFailure:true,recommendationFallback:true}); return { profile, continueWatching, recentlyCompleted, personalized: recommendations }; }
     const b = recommendations.data, used = new Set(continueWatching?.data?.map(r => r.anilistId));
     const take = (rows: Recommendation[]) => {
       const picked: Recommendation[] = [];
@@ -38,6 +40,8 @@ export class HomeService {
     const items = take(b.recommendations);
     const because = b.because && { sourceAnime: b.because.sourceAnime, recommendations: take(b.because.recommendations) };
     const favoriteGenres = b.genreDiscovery && { genre: b.genreDiscovery.genre, recommendations: take(b.genreDiscovery.recommendations) };
+    const partialFailure = [profile,continueWatching,recentlyCompleted].some(part=>part?.status==='error') || b.meta.partial;
+    logEvent(partialFailure?'warn':'info','home.completed',{durationMs:Math.round(performance.now()-started),sectionCount:[profile,continueWatching,recentlyCompleted,recommendations].filter(Boolean).length,partialFailure,recommendationFallback:b.meta.partial});
     return { profile, continueWatching, recentlyCompleted, personalized: { status: 'ready' as const, data: { recommendations: items, continuations, because, favoriteGenres, audience: b.meta.signalCount === 0 ? 'cold' : b.meta.signalCount <= 2 ? 'light' : 'established', meta: { ...b.meta, personalized: items.some(r => r.personalized) } } } };
   }
 }
