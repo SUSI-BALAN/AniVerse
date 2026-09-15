@@ -38,7 +38,7 @@ describe("SearchPage", () => {
     vi.mocked(useAnimeSearch).mockReturnValue({ ...baseResult, anime: [], loading: true });
     const { rerender } = render(<MemoryRouter><LibraryProvider><SearchPage /></LibraryProvider></MemoryRouter>);
     fireEvent.change(screen.getByLabelText("Search anime"), { target: { value: "Bleach" } });
-    expect(screen.getByLabelText("Loading anime")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Searching anime");
 
     vi.mocked(useAnimeSearch).mockReturnValue({ ...baseResult, anime: [], error: "Unable to load anime." });
     rerender(<MemoryRouter><LibraryProvider><SearchPage /></LibraryProvider></MemoryRouter>);

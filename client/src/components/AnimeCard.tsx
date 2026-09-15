@@ -33,7 +33,7 @@ export function AnimeCard({ anime, rank, label }: { anime: Anime; rank?: number;
             {anime.format && <span className="truncate">{anime.format.replaceAll("_", " ")}</span>}
             {anime.seasonYear && <span>{anime.seasonYear}</span>}
           </div>
-          {anime.episodes && <p className="mt-1 text-xs text-zinc-500">{anime.episodes} episodes</p>}
+          {anime.episodes && <p className="mt-1 text-xs text-muted">{anime.episodes} episodes</p>}
         </div>
       </Link>
     </article>

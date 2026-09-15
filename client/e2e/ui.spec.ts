@@ -157,7 +157,7 @@ test("local favorites and My List actions persist through the UI", async ({ page
   await page.goto("/my-list");
   await expect(page.getByRole("heading", { name: "Frieren: Beyond Journey's End" })).toBeVisible();
   await page.goto("/history");
-  await page.getByRole("button", {name:"Recently Viewed",exact:true}).click();
+  await page.getByRole("tab", {name:"Recently Viewed",exact:true}).click();
   await expect(page.getByRole("heading", { name: "Frieren: Beyond Journey's End", exact: true })).toBeVisible();
   await page.goto("/settings");
   const titlePreference = page.getByLabel("Title preference");

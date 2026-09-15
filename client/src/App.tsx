@@ -21,7 +21,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage').then(module => ({de
 
 export default function App() {
   return (
-    <Suspense fallback={<div className="page-shell animate-pulse text-zinc-400">Loading AniVerse...</div>}>
+    <Suspense fallback={<div className="page-shell animate-pulse text-zinc-400" role="status" aria-live="polite">Loading AniVerse…</div>}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />

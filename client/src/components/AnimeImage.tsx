@@ -14,7 +14,7 @@ export function AnimeImage({ src, alt, className = "", eager = false }: AnimeIma
 
   if (!src || failed) {
     return (
-      <div className={`flex items-center justify-center bg-zinc-900 text-zinc-600 ${className}`} role="img" aria-label={`${alt} image unavailable`}>
+      <div className={`flex items-center justify-center bg-zinc-900 text-zinc-600 ${className}`} role={alt ? "img" : undefined} aria-hidden={!alt || undefined} aria-label={alt ? `${alt} image unavailable` : undefined}>
         <ImageOff size={30} aria-hidden="true" />
       </div>
     );

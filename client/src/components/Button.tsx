@@ -14,7 +14,7 @@ const variants: Record<ButtonVariant, string> = {
   primary: "bg-foreground text-background hover:bg-white",
   secondary: "border border-outline bg-surface-glass text-foreground hover:bg-white/10",
   ghost: "text-muted hover:bg-white/8 hover:text-foreground",
-  danger: "bg-danger text-white hover:brightness-110"
+  danger: "bg-danger text-background hover:brightness-110"
 };
 
 export function Button({ children, variant = "primary", to, className = "", disabled, ...props }: ButtonProps) {

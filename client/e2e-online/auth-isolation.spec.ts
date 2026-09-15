@@ -10,7 +10,7 @@ async function mocks(page:Page){
   return route.fulfill({json:session(users[email.startsWith("b")?1:0],email)});
  });
 }
-async function register(page:Page,email:string){await page.goto("/register");await page.getByLabel("Email").fill(email);await page.getByLabel("Password",{exact:true}).fill("strong-password-123");await page.getByLabel("Confirm password").fill("strong-password-123");await page.getByRole("button",{name:"Create Account",exact:true}).click();await expect(page.getByRole("status")).toContainText("Check your email");}
+async function register(page:Page,email:string){await page.goto("/register");await page.getByLabel("Email").fill(email);await page.getByLabel("Password",{exact:true}).fill("strong-password-123");await page.getByLabel("Confirm password").fill("strong-password-123");await page.getByRole("button",{name:"Create Account",exact:true}).click();await expect(page.getByRole("status").filter({hasText:"Check your email"})).toContainText("Check your email");}
 async function login(page:Page,email:string){await page.goto("/login");await page.getByLabel("Email").fill(email);await page.getByLabel("Password",{exact:true}).fill("strong-password-123");await page.getByRole("button",{name:"Sign In",exact:true}).click();await expect(page.getByRole("button",{name:"Sign out",exact:true}).first()).toBeVisible();}
 test("complete online account isolation and local backup migration",async({page})=>{
  test.setTimeout(90000);await mocks(page);await register(page,"a@example.com");await login(page,"a@example.com");
@@ -30,7 +30,7 @@ test("complete online account isolation and local backup migration",async({page}
  await page.goto("/favorites");await expect(page.getByRole("heading",{name:"Naruto",exact:true})).toBeVisible();await expect(page.getByText("User B Anime")).toHaveCount(0);
  await page.goto("/settings");await expect(page.getByRole("button",{name:"Import Local AniVerse Backup"})).toBeVisible();
  await page.locator('input[type="file"]').setInputFiles({name:"local.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify({app:"AniVerse",version:1,favorites:[{anilistId:303,title:"Imported Local Anime"}]}))});
- await expect(page.getByRole("status")).toContainText("Backup imported");
+ await expect(page.getByRole("status").filter({hasText:"Backup imported"})).toContainText("Backup imported");
  await page.goto("/favorites");await expect(page.getByRole("heading",{name:"Imported Local Anime",exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:"Naruto",exact:true})).toBeVisible();
  const stats=await(await page.request.get("http://127.0.0.1:4176/api/stats",{headers})).json();expect(stats.data.favorites).toBe(2);
  const recommendations=await(await page.request.get("http://127.0.0.1:4176/api/recommendations",{headers})).json();expect(recommendations.data.some((x:{anime:{id:number}})=>x.anime.id===2)).toBe(true);

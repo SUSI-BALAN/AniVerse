@@ -115,6 +115,13 @@ textarea:focus-visible {
   display: none;
 }
 
+.skip-link { position: fixed; left: 1rem; top: 1rem; z-index: 80; transform: translateY(-200%); padding: .75rem 1rem; border-radius: .5rem; background: var(--text-primary); color: var(--background); font-weight: 700; }
+.skip-link:focus { transform: none; }
+[tabindex]:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 3px; }
+html[data-reduced-motion="true"], html[data-reduced-motion="true"] * { scroll-behavior: auto !important; }
+html[data-reduced-motion="true"] *, html[data-reduced-motion="true"] *::before, html[data-reduced-motion="true"] *::after { animation: none !important; transition-duration: .01ms !important; }
+html[data-reduced-motion="true"] .group:hover img { transform: none !important; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

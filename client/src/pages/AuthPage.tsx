@@ -28,12 +28,12 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       <p className="text-xs font-bold uppercase tracking-[.2em] text-accent-secondary">AniVerse Online</p>
       <h1 id="auth-title" className="mt-2 text-3xl font-black">{register ? "Create account" : "Welcome back"}</h1>
       <p className="mt-2 text-sm text-muted">{register ? "Create your private cloud library." : "Sign in to continue to your AniVerse library."}</p>
-      <form className="mt-7 space-y-4" onSubmit={submit}>
+      <form aria-busy={busy} className="mt-7 space-y-4" onSubmit={submit}>
         {confirmationSent && <p role="status" className="text-accent-secondary">Check your email to confirm your account.</p>}
         <label className="block text-sm font-semibold">Email<input className="control-surface mt-2 h-11 w-full rounded-md px-3" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-        <label className="block text-sm font-semibold">Password<input className="control-surface mt-2 h-11 w-full rounded-md px-3" type="password" autoComplete={register ? "new-password" : "current-password"} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-        {register && <label className="block text-sm font-semibold">Confirm password<input className="control-surface mt-2 h-11 w-full rounded-md px-3" type="password" autoComplete="new-password" required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>}
-        {(error || auth.error) && <p role="alert" className="text-sm text-rose-300">{error ?? auth.error}</p>}
+        <label className="block text-sm font-semibold">Password<input className="control-surface mt-2 h-11 w-full rounded-md px-3" type="password" aria-describedby={error || auth.error ? "auth-error" : undefined} aria-invalid={Boolean(error || auth.error)} autoComplete={register ? "new-password" : "current-password"} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        {register && <label className="block text-sm font-semibold">Confirm password<input className="control-surface mt-2 h-11 w-full rounded-md px-3" type="password" aria-describedby={error || auth.error ? "auth-error" : undefined} aria-invalid={Boolean(error || auth.error)} autoComplete="new-password" required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>}
+        {(error || auth.error) && <p id="auth-error" role="alert" className="text-sm text-rose-300">{error ?? auth.error}</p>}
         <Button type="submit" className="w-full justify-center" disabled={busy}>{busy ? "Please wait..." : register ? "Create Account" : "Sign In"}</Button>
       </form>
       <p className="mt-5 text-center text-sm text-muted">{register ? "Already registered? " : "New to AniVerse? "}<Link className="font-semibold text-accent-secondary hover:underline" to={register ? "/login" : "/register"}>{register ? "Sign in" : "Create account"}</Link></p>

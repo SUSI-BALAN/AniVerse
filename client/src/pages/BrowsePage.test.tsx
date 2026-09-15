@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within, waitFor, waitForElementToBeRemoved } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, useNavigate, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { useAnimePage } from "../hooks/useAnimePage";
@@ -77,7 +77,7 @@ describe("BrowsePage", () => {
     expect(close).toHaveFocus();
 
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitForElementToBeRemoved(dialog);
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
   });
 });
